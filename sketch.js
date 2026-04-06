@@ -35,7 +35,7 @@ const SKELETON={
 // ══════════════════════════════════════
 //  STEP 1–3 STATE
 // ══════════════════════════════════════
-let rules={mask:Array.from({length:ROWS},()=>[1,1,1,1]),density:4,continuity:0,weight:1,symmetry:'free',style:'concentric',stroke:1.3,gap:6};
+let rules={mask:Array.from({length:ROWS},()=>[1,1,1,1]),density:5,continuity:0,weight:1,symmetry:'free',style:'concentric',stroke:1.3,gap:6};
 let overrides={};
 let previewLetter='A';
 let currentStep=1,maxStep=1;
@@ -43,6 +43,9 @@ let exportFmt='grid',exportBg='white';
 let s3ViewMode='brick';
 let azViewMode='yours';
 let rulesOverrideSnapshot=null;
+/** Step 1 slider readouts for continuity (0–2) and weight (0–2); logic keys unchanged. */
+const RULE_MERGE_READOUT=['Any pieces','No lone bricks','Largest only'];
+const RULE_FILL_READOUT=['Sparse','Normal','Full'];
 
 // ══════════════════════════════════════
 //  STEP 4 STATE
@@ -354,7 +357,7 @@ function p4Compose(ctx,PW,PH,t){
     ctx.save();ctx.beginPath();ctx.rect(0,0,PW/2,PH);ctx.clip();stamp(lcx-sep,lcy,size,1,P.rotation);ctx.restore();
     ctx.save();ctx.beginPath();ctx.rect(PW/2,0,PW/2,PH);ctx.clip();stamp(lcx+sep,lcy,size,1,P.rotation);ctx.restore();
 
-  } else if(P.comp==='edge'){
+  } else if(P.comp==='outline'){
     const g=getGrid(P.letter);
     function cell(r,c){if(r<0||r>=ROWS||c<0||c>=COLS)return 0;return g[r][c]||0;}
     const segs=[];
@@ -473,7 +476,7 @@ function p4Randomize(){
   P.lineDir=['h','v','d45','d135'][Math.floor(Math.random()*4)];
   P.ptSize=4+Math.floor(Math.random()*24);P.lineWeight=2+Math.random()*18;
   P.lineLen=30+Math.random()*120;P.planeGap=Math.random()*10;
-  P.comp=['center','mirror','tile','split','edge','scatter'][Math.floor(Math.random()*6)];
+  P.comp=['center','mirror','tile','split','outline','scatter'][Math.floor(Math.random()*6)];
   P.motion=['none','pulse','drift','morph','full'][Math.floor(Math.random()*5)];
   P.scale=0.4+Math.random()*1.2;P.rotation=Math.round((Math.random()-0.5)*60);
   const fgs=['#1a1a1a','#ffffff','#d4ff00','#ff3b00','#0057ff','#ff00aa'];
@@ -556,7 +559,7 @@ function updateRuleLiveReadout(){
   const el=document.getElementById('structure-live');if(!el)return;
   const g=generateGrid(previewLetter);const n=gridCount(g);
   const symLab={free:'as drawn',mirror:'mirror L↔R',rotate:'180° match'};
-  el.innerHTML=`<strong>${previewLetter}</strong> · ${n} bricks · ${rules.density}/col · ${['Loose','Mid','Strict'][rules.continuity]} · ${['Light','Regular','Bold'][rules.weight]} · ${symLab[rules.symmetry]}`;
+  el.innerHTML=`<strong>${previewLetter}</strong> · ${n} bricks · ≤${rules.density} / column · merge: ${RULE_MERGE_READOUT[rules.continuity]} · fill: ${RULE_FILL_READOUT[rules.weight]} · ${symLab[rules.symmetry]}`;
 }
 function refreshPreview(){
   const cvs=document.getElementById('preview-canvas');const ctx=cvs.getContext('2d');
@@ -586,9 +589,8 @@ function syncAzViewUI(){
 }
 function updateOvCount(){const n=Object.keys(overrides).length;document.getElementById('ov-count').textContent=n;document.getElementById('ov-count2').textContent=n;}
 function syncRuleSummary(){
-  const CL=['Loose','Mid','Strict'],WL=['Light','Regular','Bold'];
   const symLab={free:'As drawn',mirror:'Mirror L↔R',rotate:'180° match'};
-  document.getElementById('s2-rule-summary').innerHTML=`Mask &nbsp;<b>${rules.mask.flat().filter(Boolean).length}/20 cells active</b><br>Column cap &nbsp;<b>${rules.density} bricks max</b><br>Continuity &nbsp;<b>${CL[rules.continuity]}</b><br>Weight &nbsp;<b>${WL[rules.weight]}</b><br>Grid symmetry &nbsp;<b>${symLab[rules.symmetry]}</b><br>Style &nbsp;<b>${rules.style}</b>`;
+  document.getElementById('s2-rule-summary').innerHTML=`Mask &nbsp;<b>${rules.mask.flat().filter(Boolean).length}/20 cells active</b><br>Max bricks / column &nbsp;<b>${rules.density}</b><br>How pieces merge &nbsp;<b>${RULE_MERGE_READOUT[rules.continuity]}</b><br>Brick fill &nbsp;<b>${RULE_FILL_READOUT[rules.weight]}</b><br>Grid symmetry &nbsp;<b>${symLab[rules.symmetry]}</b><br>Style &nbsp;<b>${rules.style}</b>`;
 }
 function syncExportSummary(){const n=Object.keys(overrides).length;document.getElementById('s3-ov-n').textContent=n;document.getElementById('s3-rule-n').textContent=26-n;}
 
@@ -778,24 +780,23 @@ function resetOverride(letter){delete overrides[letter];if(Object.keys(overrides
 // ══════════════════════════════════════
 //  STEP 1-3 CONTROLS
 // ══════════════════════════════════════
-const CL=['Loose','Mid','Strict'],WL=['Light','Regular','Bold'];
 function bindSlider(id,valId,key,fmt){const el=document.getElementById(id),vl=document.getElementById(valId);el.addEventListener('input',()=>{rules[key]=parseFloat(el.value);vl.textContent=fmt?fmt(rules[key]):rules[key];applyRuleChange();});}
 bindSlider('r-density','rv-density','density');
-bindSlider('r-cont','rv-cont','continuity',v=>CL[v]);
-bindSlider('r-weight','rv-weight','weight',v=>WL[v]);
+bindSlider('r-cont','rv-cont','continuity',v=>RULE_MERGE_READOUT[v]);
+bindSlider('r-weight','rv-weight','weight',v=>RULE_FILL_READOUT[v]);
 bindSlider('r-stroke','rv-stroke','stroke',v=>v.toFixed(1));
 bindSlider('r-gap','rv-gap','gap',v=>v.toFixed(1));
-document.getElementById('rv-cont').textContent=CL[0];document.getElementById('rv-weight').textContent=WL[1];
+document.getElementById('rv-cont').textContent=RULE_MERGE_READOUT[0];document.getElementById('rv-weight').textContent=RULE_FILL_READOUT[1];
 function bindPills(gid,key){document.querySelectorAll('#'+gid+' .pill').forEach(p=>p.addEventListener('click',()=>{rules[key]=p.dataset.v;document.querySelectorAll('#'+gid+' .pill').forEach(q=>q.classList.toggle('on',q===p));applyRuleChange();}));}
 bindPills('sym-pills','symmetry');bindPills('style-pills','style');
 document.getElementById('btn-rand-rules').addEventListener('click',()=>{
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)rules.mask[r][c]=Math.random()<0.78?1:0;
-  rules.density=1+Math.floor(Math.random()*4);rules.continuity=Math.floor(Math.random()*3);rules.weight=Math.floor(Math.random()*3);
+  rules.density=1+Math.floor(Math.random()*5);rules.continuity=Math.floor(Math.random()*3);rules.weight=Math.floor(Math.random()*3);
   rules.symmetry=['free','mirror','rotate'][Math.floor(Math.random()*3)];rules.stroke=+(0.7+Math.random()*1.8).toFixed(1);rules.gap=+(3+Math.random()*10).toFixed(1);
   rules.style=['none','concentric','hlines','diagonal','dots','solid'][Math.floor(Math.random()*6)];
   document.getElementById('r-density').value=rules.density;document.getElementById('rv-density').textContent=rules.density;
-  document.getElementById('r-cont').value=rules.continuity;document.getElementById('rv-cont').textContent=CL[rules.continuity];
-  document.getElementById('r-weight').value=rules.weight;document.getElementById('rv-weight').textContent=WL[rules.weight];
+  document.getElementById('r-cont').value=rules.continuity;document.getElementById('rv-cont').textContent=RULE_MERGE_READOUT[rules.continuity];
+  document.getElementById('r-weight').value=rules.weight;document.getElementById('rv-weight').textContent=RULE_FILL_READOUT[rules.weight];
   document.getElementById('r-stroke').value=rules.stroke;document.getElementById('rv-stroke').textContent=rules.stroke.toFixed(1);
   document.getElementById('r-gap').value=rules.gap;document.getElementById('rv-gap').textContent=rules.gap.toFixed(1);
   document.querySelectorAll('#sym-pills .pill').forEach(p=>p.classList.toggle('on',p.dataset.v===rules.symmetry));
