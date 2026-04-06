@@ -598,7 +598,7 @@ function cancelS3Rafs(){if(_s3TypeRafA)cancelAnimationFrame(_s3TypeRafA);if(_s3T
 function bindS3TypeFrameResize(){
   const frame=document.getElementById('s3-type-frame');if(!frame||_s3TypeFrameRO)return;
   if(typeof ResizeObserver==='undefined')return;
-  _s3TypeFrameRO=new ResizeObserver(entries=>{for(const e of entries){const w=e.contentRect.width;if(w>=48)_s3TypeFrameWidth=Math.floor(w);}if(currentStep===3)scheduleS3Type();});
+  _s3TypeFrameRO=new ResizeObserver(entries=>{for(const e of entries){const w=e.contentRect.width;if(w>=48)_s3TypeFrameWidth=Math.floor(w);}if(currentStep===3){if(exportFmt==='typeset')renderS3();else scheduleS3Type();}});
   _s3TypeFrameRO.observe(frame);
 }
 function scheduleS3Type(){cancelS3Rafs();_s3TypeRafA=requestAnimationFrame(()=>{_s3TypeRafA=0;renderS3TypeSample();});}
@@ -687,9 +687,30 @@ function renderS3TypeSample(){
   }
 }
 function renderS3(){
+  const cvs=document.getElementById('s3-canvas');
+  if(exportFmt==='typeset'){
+    renderS3TypeSample();
+    const tc=document.getElementById('s3-type-canvas');
+    const maxW=Math.min(600,window.innerWidth*0.55);
+    if(!tc||!tc.width||!tc.height){
+      cvs.width=400;cvs.height=120;cvs.style.width='100%';cvs.style.height='auto';
+      const x=cvs.getContext('2d');x.fillStyle=exportBg==='black'?'#141414':'#fff';x.fillRect(0,0,cvs.width,cvs.height);
+      x.fillStyle='#aaa';x.font='11px Helvetica,Arial,sans-serif';x.fillText('Live typeset preview appears here',12,56);
+      return;
+    }
+    const dpr=Math.min(2,window.devicePixelRatio||1);
+    const cssW=tc.width/dpr,cssH=tc.height/dpr;
+    const ds=Math.min(1,maxW/Math.max(cssW,1));
+    cvs.width=tc.width;
+    cvs.height=tc.height;
+    cvs.style.width=Math.round(cssW*ds)+'px';
+    cvs.style.height=Math.round(cssH*ds)+'px';
+    cvs.getContext('2d').drawImage(tc,0,0);
+    return;
+  }
   const LW=100,LH=100,PAD=8;const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;
   let W,H;if(exportFmt==='grid'){W=13*LW+14*PAD;H=2*LH+3*PAD;}else{W=26*LW+27*PAD;H=LH+2*PAD;}
-  const cvs=document.getElementById('s3-canvas');const maxW=Math.min(600,window.innerWidth*0.55);const ds=Math.min(1,maxW/W);
+  const maxW=Math.min(600,window.innerWidth*0.55);const ds=Math.min(1,maxW/W);
   cvs.style.width=Math.round(W*ds)+'px';cvs.style.height=Math.round(H*ds)+'px';cvs.width=W;cvs.height=H;
   const ctx=cvs.getContext('2d');ctx.fillStyle=exportBg==='black'?'#141414':'#fff';ctx.fillRect(0,0,W,H);
   LETTERS.forEach((l,i)=>{
@@ -820,9 +841,23 @@ function bindS1Accordions(){
 }
 document.querySelectorAll('#fmt-pills .pill').forEach(p=>p.addEventListener('click',()=>{exportFmt=p.dataset.v;document.querySelectorAll('#fmt-pills .pill').forEach(q=>q.classList.toggle('on',q===p));renderS3();}));
 document.querySelectorAll('#bg-pills .pill').forEach(p=>p.addEventListener('click',()=>{exportBg=p.dataset.v;document.querySelectorAll('#bg-pills .pill').forEach(q=>q.classList.toggle('on',q===p));refreshAZ();renderS3();}));
-document.getElementById('s3-type-text').addEventListener('input',()=>scheduleS3Type());
-['s3-r-size','s3-r-track','s3-r-lead'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{document.getElementById('s3-rv-size').textContent=document.getElementById('s3-r-size').value;document.getElementById('s3-rv-track').textContent=document.getElementById('s3-r-track').value;document.getElementById('s3-rv-lead').textContent=(+document.getElementById('s3-r-lead').value/100).toFixed(2);scheduleS3Type();});});
+document.getElementById('s3-type-text').addEventListener('input',()=>{if(exportFmt==='typeset')renderS3();else scheduleS3Type();});
+['s3-r-size','s3-r-track','s3-r-lead'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{document.getElementById('s3-rv-size').textContent=document.getElementById('s3-r-size').value;document.getElementById('s3-rv-track').textContent=document.getElementById('s3-r-track').value;document.getElementById('s3-rv-lead').textContent=(+document.getElementById('s3-r-lead').value/100).toFixed(2);if(exportFmt==='typeset')renderS3();else scheduleS3Type();});});
 document.getElementById('btn-export').addEventListener('click',()=>{
+  if(exportFmt==='typeset'){
+    renderS3TypeSample();
+    const tc=document.getElementById('s3-type-canvas');
+    if(!tc||tc.width<2||tc.height<2){
+      setStatus('Nothing to export — add text in Typesetting');
+      return;
+    }
+    const a=document.createElement('a');
+    a.download='brick-grammar-typeset.png';
+    a.href=tc.toDataURL('image/png');
+    a.click();
+    setStatus('Exported brick-grammar-typeset.png');
+    return;
+  }
   const LW=200,LH=200,PAD=16;const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;
   let W,H;if(exportFmt==='grid'){W=13*LW+14*PAD;H=2*LH+3*PAD;}else{W=26*LW+27*PAD;H=LH+2*PAD;}
   const oc=document.createElement('canvas');oc.width=W;oc.height=H;const octx=oc.getContext('2d');
@@ -833,7 +868,7 @@ document.getElementById('btn-export').addEventListener('click',()=>{
 let _s3ResizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(_s3ResizeTimer);_s3ResizeTimer=setTimeout(()=>{
-    if(currentStep===3)scheduleS3Type();
+    if(currentStep===3){if(exportFmt==='typeset')renderS3();else scheduleS3Type();}
     if(currentStep===4){p4FitCanvas();}
   },140);
 });
@@ -911,7 +946,8 @@ document.querySelectorAll('#s3-view-pills .pill').forEach(p=>{
   p.addEventListener('click',()=>{
     s3ViewMode=p.dataset.v;
     document.querySelectorAll('#s3-view-pills .pill').forEach(q=>q.classList.toggle('on',q===p));
-    scheduleS3Type();
+    if(exportFmt==='typeset')renderS3();
+    else scheduleS3Type();
   });
 });
 
@@ -997,7 +1033,7 @@ buildMaskGrid();
 buildPreviewSel();
 refreshPreview();
 buildS4LetterRow();
-(function(){const t=document.getElementById('s3-type-text');if(t&&!t.value.trim())t.value='THE QUICK BROWN FOX\nJUMPS OVER THE LAZY DOG';})();
+(function(){const t=document.getElementById('s3-type-text');if(t&&!t.value.trim())t.value="WELCOME TO JUSTIN'S WORLD";})();
 p4SyncUI();
 renderS4SourcePreview();
 setStatus('Step 1 — Set your rules, then click Generate A–Z');
