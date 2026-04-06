@@ -76,9 +76,9 @@
       <div id="s1-structure-guide" class="s1-guide-panel" hidden>
         <div id="structure-live" class="rule-live">—</div>
       </div>
-      <div class="srow-wrap"><div class="srow"><span class="slabel">Column cap</span><input type="range" id="r-density" min="1" max="4" step="1" value="4"><span class="sval" id="rv-density">4</span></div></div>
-      <div class="srow-wrap"><div class="srow"><span class="slabel">Continuity</span><input type="range" id="r-cont" min="0" max="2" step="1" value="0"><span class="sval" id="rv-cont">Loose</span></div></div>
-      <div class="srow-wrap"><div class="srow"><span class="slabel">Weight</span><input type="range" id="r-weight" min="0" max="2" step="1" value="1"><span class="sval" id="rv-weight">Regular</span></div></div>
+      <div class="srow-wrap"><div class="srow"><span class="slabel">Max bricks / column</span><input type="range" id="r-density" min="1" max="5" step="1" value="5"><span class="sval" id="rv-density">5</span></div></div>
+      <div class="srow-wrap"><div class="srow"><span class="slabel">How pieces merge</span><input type="range" id="r-cont" min="0" max="2" step="1" value="0"><span class="sval" id="rv-cont">Any pieces</span></div></div>
+      <div class="srow-wrap"><div class="srow"><span class="slabel">Brick fill</span><input type="range" id="r-weight" min="0" max="2" step="1" value="1"><span class="sval" id="rv-weight">Normal</span></div></div>
       <div class="s1-sec-label">Grid symmetry</div>
       <div class="pills" id="sym-pills">
         <button class="pill on" data-v="free">As drawn</button>
@@ -153,18 +153,10 @@
     <!-- STEP 4 LEFT — Poster Lab -->
     <div id="s4-left" class="step-plate step-plate--above" data-step="4" style="overflow-y:auto;overflow-x:hidden;">
 
-      <!-- concept header -->
-      <div style="padding:10px 0 14px;border-bottom:1px solid #e8e8e8;margin-bottom:4px;">
-        <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#999;font-weight:600;margin-bottom:6px;">Source — brick grid</div>
-        <div style="display:flex;gap:10px;align-items:flex-start;">
-          <div id="s4-source-wrap">
-            <canvas id="s4-source-preview" width="80" height="100" style="flex-shrink:0;border:1px solid #e8e8e8;background:#fff;display:block;"></canvas>
-            <canvas id="s4-source-overlay" width="80" height="100" style="width:80px;height:100px;"></canvas>
-          </div>
-          <div style="font-size:9px;color:#aaa;line-height:1.65;letter-spacing:.03em;padding-top:2px;">
-            Each brick position in your Step 1–2 grid becomes a <b style="color:#555">point</b>, <b style="color:#555">line</b>, or <b style="color:#555">plane</b> element here.<br>
-            Same structure · different abstraction.
-          </div>
+      <div style="padding:8px 0 12px;border-bottom:1px solid #e8e8e8;margin-bottom:4px;">
+        <div id="s4-source-wrap">
+          <canvas id="s4-source-preview" width="80" height="100" style="flex-shrink:0;border:1px solid #e8e8e8;background:#fff;display:block;"></canvas>
+          <canvas id="s4-source-overlay" width="80" height="100" style="width:80px;height:100px;"></canvas>
         </div>
       </div>
 
@@ -203,7 +195,7 @@
         <button class="pill" data-v="mirror">Mirror</button>
         <button class="pill" data-v="tile">Tile</button>
         <button class="pill" data-v="split">Split</button>
-        <button class="pill" data-v="edge">Edge</button>
+        <button class="pill" data-v="outline">Outline</button>
         <button class="pill" data-v="scatter">Scatter</button>
       </div>
 
