@@ -1,6 +1,4 @@
-// ══════════════════════════════════════
-//  SHARED DATA
-// ══════════════════════════════════════
+
 const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const ROWS=5,COLS=4;
 const SKELETON={
@@ -32,24 +30,25 @@ const SKELETON={
   Z:[[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
 };
 
-// ══════════════════════════════════════
 //  STEP 1–3 STATE
-// ══════════════════════════════════════
-let rules={mask:Array.from({length:ROWS},()=>[1,1,1,1]),density:5,continuity:0,weight:1,symmetry:'free',style:'concentric',stroke:1.3,gap:6};
+
+let rules={mask:Array.from({length:ROWS},()=>[1,1,1,1]),density:5,continuity:0,weight:1,symmetry:'free',style:'none',stroke:1.3,gap:6};
 let overrides={};
 let previewLetter='A';
 let currentStep=1,maxStep=1;
 let exportFmt='grid',exportBg='white';
 let s3ViewMode='brick';
+let s3CanvasTarget='sheet';
+let _s3PosterFitDelay=0;
+const S3_CANVAS_PILL_SEL='#s3-canvas-target-pills .pill, #s3-canvas-target-pills-left .pill';
 let azViewMode='yours';
 let rulesOverrideSnapshot=null;
-/** Step 1 slider readouts for continuity (0–2) and weight (0–2); logic keys unchanged. */
+
 const RULE_MERGE_READOUT=['Any pieces','No lone bricks','Largest only'];
 const RULE_FILL_READOUT=['Sparse','Normal','Full'];
 
-// ══════════════════════════════════════
 //  STEP 4 STATE
-// ══════════════════════════════════════
+
 const P={
   letter:'A',elem:'line',
   ptSize:12,
@@ -63,9 +62,8 @@ const P={
 let p4Phase=0,p4Raf=null,p4RecRaf=null;
 let p4Drag=null;
 
-// ══════════════════════════════════════
 //  RULES / OVERRIDES HELPERS
-// ══════════════════════════════════════
+
 function cloneRules(){return{mask:rules.mask.map(r=>[...r]),density:rules.density,continuity:rules.continuity,weight:rules.weight,symmetry:rules.symmetry,style:rules.style,stroke:rules.stroke,gap:rules.gap};}
 function rulesEqual(a,b){
   if(!a||!b)return false;
@@ -88,11 +86,10 @@ function checkRulesOverrideDesync(){
   if(!rulesEqual(rules,rulesOverrideSnapshot))ban.classList.add('vis');else ban.classList.remove('vis');
 }
 function applyRuleChange(){refreshPreview();checkRulesOverrideDesync();}
-function refreshAfterOverrideReset(){refreshPreview();if(currentStep>=2)refreshAZ();if(currentStep>=3)renderS3();if(currentStep===4)p4Render(0);}
+function refreshAfterOverrideReset(){refreshPreview();if(currentStep>=2)refreshAZ();if(currentStep>=3){renderS3();p4Render(0);}}
 
-// ══════════════════════════════════════
 //  STEP NAVIGATION
-// ══════════════════════════════════════
+
 function syncStepPlates(step,prev){
   const same=prev===step;
   const apply=()=>{
@@ -113,7 +110,7 @@ function goStep(n){
   const prev=currentStep;
   if(n===1&&Object.keys(overrides).length&&rulesOverrideSnapshot===null)rulesOverrideSnapshot=cloneRules();
   currentStep=n;
-  if(prev===4&&n!==4)p4StopAnim();
+  if(prev===3&&n!==3)p4StopAnim();
   document.querySelectorAll('.stab').forEach(t=>{
     const s=+t.dataset.step;
     t.classList.remove('active','done','locked');
@@ -124,19 +121,60 @@ function goStep(n){
   syncStepPlates(n,prev);
   if(n===1)setStatus('Step 1 — Set your rules, then click Generate A–Z');
   if(n===2){syncRuleSummary();syncAzViewUI();refreshAZ();setStatus('Step 2 — Click letters to override');}
-  if(n===3){syncExportSummary();renderS3();setStatus('Step 3 — Typesetting preview, download PNG');}
-  if(n===4){p4Phase=0;renderS4SourcePreview();p4Render(0);p4StartAnim();setStatus('Step 4 — brick grid → Point · Line · Plane · Poster');}
+  if(n===3){syncExportSummary();renderS3();p4Phase=0;renderS4SourcePreview();setStatus('Step 3 — Sheet PNG, typesetting & Poster Lab');setS3CanvasTarget(s3CanvasTarget,{skipSheetRefresh:true,instant:true});}
+  syncTopbarSub(n);
+}
+function syncTopbarSub(n){
+  const el=document.getElementById('topbar-sub');if(!el)return;
+  const map={1:'Canvas → Structure → Generate A–Z (right →)',2:'A–Z grid · click letters to override bricks',3:'Step 3 — Sheet / Poster (left & right panels)'};
+  el.textContent=map[n]||map[1];
+}
+function setS3CanvasTarget(v,opts){
+  if(v!=='sheet'&&v!=='poster')return;
+  opts=opts&&typeof opts==='object'?opts:{};
+  const skipSheetRefresh=!!opts.skipSheetRefresh;
+  const instant=!!opts.instant;
+  if(_s3PosterFitDelay){clearTimeout(_s3PosterFitDelay);_s3PosterFitDelay=0;}
+  s3CanvasTarget=v;
+  const stage=document.getElementById('s3-main-stage');
+  const leftStage=document.getElementById('s3-left-main-stage');
+  if(instant){
+    stage?.classList.add('s3-main-stage--instant');
+    leftStage?.classList.add('s3-left-main-stage--instant');
+  }
+  const stack=document.getElementById('s3-right-stack');
+  if(stack){stack.classList.toggle('s3-canvas-poster',v==='poster');stack.classList.toggle('s3-canvas-sheet',v==='sheet');}
+  const sheet=document.getElementById('s3-sheet-panel'),poster=document.getElementById('s3-poster-panel');
+  if(sheet)sheet.classList.toggle('on',v==='sheet');
+  if(poster)poster.classList.toggle('on',v==='poster');
+  const leftSheet=document.getElementById('s3-left-sheet-panel'),leftPoster=document.getElementById('s3-left-poster-panel');
+  if(leftSheet)leftSheet.classList.toggle('on',v==='sheet');
+  if(leftPoster)leftPoster.classList.toggle('on',v==='poster');
+  document.querySelectorAll(S3_CANVAS_PILL_SEL).forEach(q=>q.classList.toggle('on',q.dataset.v===v));
+  const hint=document.getElementById('s3-right-hint');
+  if(hint)hint.textContent=v==='sheet'?'Typeset & sheet — Poster tab matches the left panel':'Poster canvas — left panel has the same controls';
+  const dropInstant=()=>{
+    stage?.classList.remove('s3-main-stage--instant');
+    leftStage?.classList.remove('s3-left-main-stage--instant');
+  };
+  if(v==='poster'){
+    if(instant)requestAnimationFrame(()=>{p4FitCanvas();p4StartAnim();dropInstant();});
+    else{
+      requestAnimationFrame(dropInstant);
+      _s3PosterFitDelay=setTimeout(()=>{p4FitCanvas();p4StartAnim();_s3PosterFitDelay=0;}, 420);
+    }
+  }else{
+    p4StopAnim();
+    if(!skipSheetRefresh){if(exportFmt==='typeset')renderS3();else scheduleS3Type();}
+    requestAnimationFrame(()=>requestAnimationFrame(dropInstant));
+  }
 }
 function unlockStep(n){
   maxStep=Math.max(maxStep,n);
-  if(n>=3)maxStep=Math.max(maxStep,4);
   document.querySelectorAll('.stab').forEach(t=>{if(+t.dataset.step<=maxStep)t.classList.remove('locked');});
 }
 document.querySelectorAll('.stab').forEach(t=>t.addEventListener('click',()=>{const s=+t.dataset.step;if(s<=maxStep)goStep(s);}));
 
-// ══════════════════════════════════════
-//  GRID GENERATION
-// ══════════════════════════════════════
 function emptyGrid(){return Array.from({length:ROWS},()=>Array(COLS).fill(0));}
 function generateGrid(letter){
   const skel=SKELETON[letter];if(!skel)return emptyGrid();
@@ -184,9 +222,6 @@ function gridDiff(a,b){let d=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(
 function gridCount(g){let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g[r][c])n++;return n;}
 function getGrid(l){return overrides[l]||generateGrid(l);}
 
-// ══════════════════════════════════════
-//  STEP 1-3 RENDERER (SDF bricks)
-// ══════════════════════════════════════
 function sdBoxS(px,py,cx,cy,hw,hh,r){r=r||0;const qx=Math.abs(px-cx)-hw+r,qy=Math.abs(py-cy)-hh+r;return Math.min(Math.max(qx,qy),0)+Math.sqrt(Math.max(qx,0)**2+Math.max(qy,0)**2)-r;}
 function drawLetterGrid(ctx,grid,W,H,style,stroke,gap,fg,bg){
   fg=fg===undefined?20:fg;bg=bg===undefined?255:bg;
@@ -220,9 +255,8 @@ function drawLetterGrid(ctx,grid,W,H,style,stroke,gap,fg,bg){
   ctx.putImageData(imgData,0,0);
 }
 
-// ══════════════════════════════════════
 //  STEP 4: POSTER LAB ENGINE
-// ══════════════════════════════════════
+
 function p4BricksOf(letter){
   const g=getGrid(letter),out=[];
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g[r][c])out.push({r,c});
@@ -263,7 +297,6 @@ function p4DrawElem(ctx,cx,cy,cellW,cellH,params,fg){
   }
 }
 function p4DrawLetter(ctx,letter,lcx,lcy,size,params,fg){
-  // square cell grid — proportional letterform
   const cellW=size/COLS;
   const cellH=size/ROWS;
   const x0=lcx-size/2;
@@ -286,16 +319,13 @@ function p4MotionParams(t){
     else planeGap=P.planeGap*sin01(t*0.8)*2;
   } else if(P.motion==='morph'){
     if(elem==='line'){
-      // line: cycle through 4 directions
       const dirs=['h','v','d45','d135'];
       lineDir=dirs[Math.floor(t/1.8)%4];
       lineWeight=P.lineWeight*(0.6+0.6*sin01(t*1.3));
     } else if(elem==='point'){
-      // point: jump between 3 discrete sizes
       const sizes=[P.ptSize*0.4, P.ptSize*1.0, P.ptSize*1.8];
       ptSize=sizes[Math.floor(t/1.6)%3];
     } else {
-      // plane: jump between 3 discrete gap values
       const gaps=[0, P.planeGap*1.5, P.planeGap*3.5];
       planeGap=gaps[Math.floor(t/1.6)%3];
     }
@@ -323,7 +353,6 @@ function p4Compose(ctx,PW,PH,t){
 
   const lcx=PW/2+ox,lcy=PH/2+oy;
   const size=Math.min(PW,PH)*P.scale;
-  // square cell grid — proportional
   const cellW=size/COLS;
   const cellH=size/ROWS;
   const x0=lcx-size/2;
@@ -507,18 +536,36 @@ function p4SyncUI(){
 // ══════════════════════════════════════
 //  STEP 1-3 UI
 // ══════════════════════════════════════
+let maskPainting=false,maskPaintMode=1;
+function paintMaskCell(r,c){
+  if(rules.mask[r][c]===maskPaintMode)return;
+  rules.mask[r][c]=maskPaintMode;
+  const cell=document.querySelector(`#mask-grid .mg-cell[data-r="${r}"][data-c="${c}"]`);
+  if(cell)cell.classList.toggle('on',!!maskPaintMode);
+  applyRuleChange();
+}
 function buildMaskGrid(){
-  const el=document.getElementById('mask-grid');el.innerHTML='';
+  const el=document.getElementById('mask-grid');if(!el)return;
+  el.innerHTML='';
+  el.oncontextmenu=e=>e.preventDefault();
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
     const cell=document.createElement('div');cell.className='mg-cell'+(rules.mask[r][c]?' on':'');
-    cell.dataset.r=r;cell.dataset.c=c;
-    cell.addEventListener('mousedown',e=>{e.preventDefault();toggleMask(r,c);});
-    cell.addEventListener('mouseenter',()=>refreshMaskMini({r,c}));
+    cell.dataset.r=String(r);cell.dataset.c=String(c);
+    cell.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      maskPaintMode=e.button===2?0:(rules.mask[r][c]?0:1);
+      maskPainting=true;
+      paintMaskCell(r,c);
+    });
+    cell.addEventListener('mouseenter',()=>{
+      if(maskPainting)paintMaskCell(r,c);
+      refreshMaskMini({r,c});
+    });
     cell.addEventListener('mouseleave',()=>refreshMaskMini(null));
     el.appendChild(cell);
   }
 }
-function toggleMask(r,c){rules.mask[r][c]=rules.mask[r][c]?0:1;document.querySelectorAll('.mg-cell').forEach(el=>el.classList.toggle('on',!!rules.mask[+el.dataset.r][+el.dataset.c]));applyRuleChange();}
+window.addEventListener('mouseup',()=>{maskPainting=false;});
 function refreshMaskMini(highlight){
   const cvs=document.getElementById('mask-preview-mini');if(!cvs)return;
   const ctx=cvs.getContext('2d');const W=cvs.width,H=cvs.height;
@@ -535,7 +582,7 @@ function refreshMaskMini(highlight){
   for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*cellW,0);ctx.lineTo(c*cellW,H);ctx.stroke();}
 }
 const MASK_PRESETS={all:()=>Array.from({length:ROWS},()=>[1,1,1,1]),left:()=>Array.from({length:ROWS},()=>[1,1,0,0]),right:()=>Array.from({length:ROWS},()=>[0,0,1,1]),top:()=>Array.from({length:ROWS},(_,r)=>r<3?[1,1,1,1]:[0,0,0,0]),bottom:()=>Array.from({length:ROWS},(_,r)=>r>=2?[1,1,1,1]:[0,0,0,0]),'center-col':()=>Array.from({length:ROWS},()=>[0,1,1,0])};
-document.querySelectorAll('#mask-presets .pill').forEach(p=>p.addEventListener('click',()=>{const pr=MASK_PRESETS[p.dataset.preset];if(!pr)return;rules.mask=pr();buildMaskGrid();applyRuleChange();}));
+document.querySelectorAll('#mask-presets .pill').forEach(p=>p.addEventListener('click',()=>{const pr=MASK_PRESETS[p.dataset.preset];if(!pr)return;rules.mask=pr();document.querySelectorAll('#mask-presets .pill').forEach(q=>q.classList.toggle('on',q===p));buildMaskGrid();applyRuleChange();}));
 function buildPreviewSel(){
   const el=document.getElementById('preview-letter-sel');el.innerHTML='';
   for(const l of LETTERS){const b=document.createElement('div');b.className='pletter'+(l===previewLetter?' on':'');b.textContent=l;b.addEventListener('click',()=>{previewLetter=l;document.getElementById('mask-preview-letter-label').textContent=l;document.querySelectorAll('#preview-letter-sel .pletter').forEach(x=>x.classList.toggle('on',x.textContent===l));refreshPreview();});el.appendChild(b);}
@@ -587,7 +634,13 @@ function syncAzViewUI(){
   document.getElementById('az-cap-yours').style.display=azViewMode==='yours'?'inline':'none';
   syncAzBarHint();
 }
-function updateOvCount(){const n=Object.keys(overrides).length;document.getElementById('ov-count').textContent=n;document.getElementById('ov-count2').textContent=n;}
+function updateOvCount(){
+  const n=Object.keys(overrides).length;
+  document.getElementById('ov-count').textContent=n;
+  document.getElementById('ov-count2').textContent=n;
+  const emptyHint=document.getElementById('s2-ov-empty-hint');
+  if(emptyHint)emptyHint.hidden=n>0;
+}
 function syncRuleSummary(){
   const symLab={free:'As drawn',mirror:'Mirror L↔R',rotate:'180° match'};
   document.getElementById('s2-rule-summary').innerHTML=`Mask &nbsp;<b>${rules.mask.flat().filter(Boolean).length}/20 cells active</b><br>Max bricks / column &nbsp;<b>${rules.density}</b><br>How pieces merge &nbsp;<b>${RULE_MERGE_READOUT[rules.continuity]}</b><br>Brick fill &nbsp;<b>${RULE_FILL_READOUT[rules.weight]}</b><br>Grid symmetry &nbsp;<b>${symLab[rules.symmetry]}</b><br>Style &nbsp;<b>${rules.style}</b>`;
@@ -614,11 +667,9 @@ function typeWrapParagraph(para,maxW,g,tr,sw){
   for(const word of words){for(const piece of typeBreakWord(word,maxW,g,tr)){const pw=typeWordWidth(piece,g,tr);if(!cur.length){cur=[piece];curW=pw;continue;}const need=curW+sw+pw;if(need<=maxW){cur.push(piece);curW=need;}else{flush();cur=[piece];curW=pw;}}}
   flush();return lines;
 }
-// draws one glyph in point/line/plane mode
-// uses square cells so the letterform looks proportional (not squashed like brick)
+
 function drawGlyphPLP(ctx,letter,gx,gy,glyph,mode,fgHex){
   const g=getGrid(letter);
-  // square cell grid - proportional
   const cellW=glyph/COLS;
   const cellH=glyph/ROWS;
   ctx.fillStyle=fgHex;
@@ -723,9 +774,8 @@ function renderS3(){
   scheduleS3TypeAfterLayout();
 }
 
-// ══════════════════════════════════════
 //  OVERRIDE EDITOR
-// ══════════════════════════════════════
+
 const OW=200,OH=202,OPAD=14;
 const CW2=(OW-OPAD*2)/COLS,CH2=(OH-OPAD*2)/ROWS;
 let ovLetter=null,ovGrid=null,ovRuleGrid=null,ovPainting=false,ovPaintMode=1;
@@ -777,9 +827,8 @@ document.addEventListener('keydown',e=>{
 });
 function resetOverride(letter){delete overrides[letter];if(Object.keys(overrides).length===0)rulesOverrideSnapshot=null;checkRulesOverrideDesync();refreshLetter(letter);updateOvCount();setStatus('Reset — '+letter+' back to rule grid');}
 
-// ══════════════════════════════════════
 //  STEP 1-3 CONTROLS
-// ══════════════════════════════════════
+
 function bindSlider(id,valId,key,fmt){const el=document.getElementById(id),vl=document.getElementById(valId);el.addEventListener('input',()=>{rules[key]=parseFloat(el.value);vl.textContent=fmt?fmt(rules[key]):rules[key];applyRuleChange();});}
 bindSlider('r-density','rv-density','density');
 bindSlider('r-cont','rv-cont','continuity',v=>RULE_MERGE_READOUT[v]);
@@ -808,18 +857,16 @@ document.getElementById('btn-generate').addEventListener('click',()=>{
   unlockStep(2);
   buildAZGrid();
   syncAzViewUI();
-  const app=document.getElementById('app');
-  if(app.classList.contains('intro-mode')){
-    app.classList.remove('intro-mode');
-    app.classList.add('revealed');
-  }
   goStep(2);
 });
 document.getElementById('btn-go-export').addEventListener('click',()=>{unlockStep(3);goStep(3);});
-document.getElementById('btn-go-poster').addEventListener('click',()=>goStep(4));
 document.getElementById('btn-back-1').addEventListener('click',()=>goStep(1));
 document.getElementById('btn-back-2').addEventListener('click',()=>goStep(2));
-document.getElementById('btn-back-3').addEventListener('click',()=>goStep(3));
+document.getElementById('btn-s3-scroll-export').addEventListener('click',()=>{
+  setS3CanvasTarget('sheet');
+  document.getElementById('s3-export-top')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('s3-scroll')?.scrollTo({top:0,behavior:'smooth'});
+});
 document.getElementById('btn-clear-ov').addEventListener('click',()=>{overrides={};rulesOverrideSnapshot=null;checkRulesOverrideDesync();refreshAfterOverrideReset();setStatus('All overrides cleared');});
 document.getElementById('rules-ov-reset').addEventListener('click',()=>{overrides={};rulesOverrideSnapshot=null;document.getElementById('rules-ov-banner').classList.remove('vis');refreshAfterOverrideReset();setStatus('Overrides reset');});
 document.getElementById('rules-ov-keep').addEventListener('click',()=>{rulesOverrideSnapshot=cloneRules();document.getElementById('rules-ov-banner').classList.remove('vis');setStatus('Kept painted grids — baseline updated');});
@@ -869,14 +916,12 @@ document.getElementById('btn-export').addEventListener('click',()=>{
 let _s3ResizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(_s3ResizeTimer);_s3ResizeTimer=setTimeout(()=>{
-    if(currentStep===3){if(exportFmt==='typeset')renderS3();else scheduleS3Type();}
-    if(currentStep===4){p4FitCanvas();}
+    if(currentStep===3){if(exportFmt==='typeset')renderS3();else scheduleS3Type();if(s3CanvasTarget==='poster')p4FitCanvas();}
   },140);
 });
 
-// ══════════════════════════════════════
 //  STEP 4 CONTROLS
-// ══════════════════════════════════════
+
 function s4BP(gid,key,cb){
   document.querySelectorAll('#'+gid+' .pill').forEach(p=>p.addEventListener('click',()=>{
     P[key]=p.dataset.v;document.querySelectorAll('#'+gid+' .pill').forEach(q=>q.classList.toggle('on',q===p));
@@ -903,7 +948,7 @@ s4Sl('s4-ln-len','s4-rv-ln-len','lineLen',v=>Math.round(v)+'%');
 s4Sl('s4-pl-gap','s4-rv-pl-gap','planeGap',v=>v.toFixed(1));
 document.getElementById('s4-scale').addEventListener('input',()=>{P.scale=parseFloat(document.getElementById('s4-scale').value)/100;document.getElementById('s4-rv-scale').textContent=P.scale.toFixed(2);if(P.motion==='none')p4Render(0);});
 s4Sl('s4-rot','s4-rv-rot','rotation',v=>v+'°');
-// swatches
+
 ['s4-bg-sw','s4-fg-sw'].forEach(gid=>{
   const key=gid==='s4-bg-sw'?'bg':'fg';
   document.querySelectorAll('#'+gid+' .swatch[data-v]').forEach(s=>s.addEventListener('click',()=>{P[key]=s.dataset.v;document.querySelectorAll('#'+gid+' .swatch[data-v]').forEach(q=>q.classList.toggle('on',q===s));if(P.motion==='none')p4Render(0);}));
@@ -951,8 +996,10 @@ document.querySelectorAll('#s3-view-pills .pill').forEach(p=>{
     else scheduleS3Type();
   });
 });
+document.querySelectorAll(S3_CANVAS_PILL_SEL).forEach(p=>{
+  p.addEventListener('click',()=>{setS3CanvasTarget(p.dataset.v);});
+});
 
-// ── Source preview hover highlight ──
 (function(){
   const src=document.getElementById('s4-source-preview');
   const ov=document.getElementById('s4-source-overlay');
@@ -972,13 +1019,11 @@ document.querySelectorAll('#s3-view-pills .pill').forEach(p=>{
     ctx.clearRect(0,0,ov.width,ov.height);
     if(!hov)return;
     const g=getGrid(P.letter);
-    if(!g[hov.r][hov.c])return; // only highlight active bricks
+    if(!g[hov.r][hov.c])return;
     const cellW=(ov.width-PAD*2)/COLS,cellH=(ov.height-PAD*2)/ROWS;
     const x=PAD+hov.c*cellW,y=PAD+hov.r*cellH;
-    // highlight the hovered cell in source preview
     ctx.fillStyle='rgba(0,100,255,0.35)';
     ctx.fillRect(x,y,cellW,cellH);
-    // pulse the corresponding element on the poster canvas
     highlightPosterBrick(hov.r,hov.c);
   }
   src.addEventListener('mousemove',e=>{drawOverlay(cellAt(e));});
@@ -995,10 +1040,8 @@ function highlightPosterBrick(br,bc){
   const cellW=size/COLS,cellH=size/ROWS;
   const x0=lcx-size/2,y0=lcy-size/2;
   const cx=x0+(bc+0.5)*cellW,cy=y0+(br+0.5)*cellH;
-  // get canvas display scale
   const r=cvs.getBoundingClientRect();
   const ds=r.width?r.width/PW:1;
-  // draw highlight directly on the poster canvas as a temporary overlay
   const ctx=cvs.getContext('2d');
   ctx.save();
   ctx.translate(lcx,lcy);ctx.rotate(P.rotation*Math.PI/180);ctx.translate(-lcx,-lcy);
@@ -1009,29 +1052,23 @@ function highlightPosterBrick(br,bc){
 }
 function clearPosterHighlight(){
   if(_highlightRaf)cancelAnimationFrame(_highlightRaf);
-  // re-render to remove highlight
   if(P.motion==='none'){_highlightRaf=requestAnimationFrame(()=>p4Render(0));}
 }
 
 function setStatus(msg){document.getElementById('status-txt').textContent=msg;}
 
-// ══════════════════════════════════════
-//  BOOT
-// ══════════════════════════════════════
-// Apply Rules button (intro mode) — reveals split workspace, stays on Step 1
-document.getElementById('btn-generate-intro').addEventListener('click',()=>{
-  const app=document.getElementById('app');
-  app.classList.remove('intro-mode');
-  app.classList.add('revealed');
-  document.getElementById('topbar-sub').textContent='Rule → System → Type → Poster';
-  refreshPreview();
-  setStatus('Step 1 — Set your rules, then click Generate A–Z');
-});
-document.getElementById('app').classList.add('intro-mode');
+syncTopbarSub(1);
 bindS1Accordions();
+(function(){
+  const btn=document.getElementById('s1-toggle-extra'),lab=document.getElementById('s1-toggle-extra-label');
+  function sync(){if(!btn||!lab)return;lab.textContent=btn.getAttribute('aria-expanded')==='true'?'Hide extra parameters':'Show all parameters';}
+  if(btn)btn.addEventListener('click',()=>requestAnimationFrame(sync));
+  sync();
+})();
 bindS3TypeFrameResize();
 buildMaskGrid();
 buildPreviewSel();
+updateOvCount();
 refreshPreview();
 buildS4LetterRow();
 (function(){const t=document.getElementById('s3-type-text');if(t&&!t.value.trim())t.value="WELCOME TO JUSTIN'S WORLD";})();
