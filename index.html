@@ -14,10 +14,9 @@
     <span class="t-sub" id="topbar-sub">Set up your rules</span>
   </div>
   <div id="step-tabs">
-    <div class="stab active" id="tab1" data-step="1"><div class="stab-num">1</div><span class="stab-label">Define Rules</span></div>
-    <div class="stab locked" id="tab2" data-step="2"><div class="stab-num">2</div><span class="stab-label">Override Letters</span></div>
-    <div class="stab locked" id="tab3" data-step="3"><div class="stab-num">3</div><span class="stab-label">Export</span></div>
-    <div class="stab locked" id="tab4" data-step="4"><div class="stab-num">4</div><span class="stab-label">Poster</span></div>
+    <div class="stab active" id="tab1" data-step="1"><div class="stab-num">1</div><div class="stab-text-wrap"><span class="stab-label">Define Rules</span></div></div>
+    <div class="stab locked" id="tab2" data-step="2"><div class="stab-num">2</div><div class="stab-text-wrap"><span class="stab-label">Override Letters</span></div></div>
+    <div class="stab locked" id="tab3" data-step="3"><div class="stab-num">3</div><div class="stab-text-wrap"><span class="stab-label">Export &amp; Poster</span></div></div>
   </div>
   <div style="display:flex;align-items:center;gap:8px;">
     <div id="s4-rec-badge"><div class="rec-dot"></div><span id="s4-rec-time">5.0s</span></div>
@@ -41,34 +40,18 @@
     <!-- STEP 1 LEFT -->
     <div id="s1-left" class="step-plate step-plate--active" data-step="1">
       <div id="s1-inner">
-        <div id="s1-col-mask">
-        <div class="s1-acc">
-        <button type="button" class="s1-acc-head" id="s1-acc-mask-head" aria-expanded="true" aria-controls="s1-acc-mask-body">
-          <span class="s1-acc-chev" aria-hidden="true">▾</span> Position mask
-        </button>
-        <div id="s1-acc-mask-body" class="s1-acc-body">
-          <div style="font-size:9px;color:#aaa;letter-spacing:.05em;line-height:1.7;margin-bottom:10px;">
-            5×4 grid maps to every letter's canvas.<br><b style="color:#555">Black = allowed · White = blocked</b>
-          </div>
-          <div class="mask-preview-row">
-            <div class="mask-block"><div class="mask-block-label">Mask</div><div id="mask-grid"></div></div>
-            <div class="mask-block mask-block--preview">
-              <div class="mask-block-label">Preview on <span id="mask-preview-letter-label">A</span></div>
-              <canvas id="mask-preview-mini" width="112" height="110"></canvas>
-            </div>
-          </div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px;" id="mask-presets">
-            <button class="pill" data-preset="all">All</button>
-            <button class="pill" data-preset="left">Left half</button>
-            <button class="pill" data-preset="right">Right half</button>
-            <button class="pill" data-preset="top">Top heavy</button>
-            <button class="pill" data-preset="bottom">Base heavy</button>
-            <button class="pill" data-preset="center-col">Centre cols</button>
-          </div>
-        </div>
-      </div>
-        </div><!-- end s1-col-mask -->
         <div id="s1-col-rules">
+      <p class="s1-path-hint"><strong>Main path:</strong> canvas preset → Structure → <strong>Generate A–Z</strong> (right →).</p>
+      <div class="s1-sec-label">Letter canvas</div>
+      <p class="s1-canvas-hint">Which part of the 5×4 grid letters may use. <b>All</b> is enough for most work — or pick a shape. Custom mask lives under <b>Show all parameters</b> if you need to paint cells by hand.</p>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px;" id="mask-presets">
+        <button class="pill on" data-preset="all">All</button>
+        <button class="pill" data-preset="left">Left half</button>
+        <button class="pill" data-preset="right">Right half</button>
+        <button class="pill" data-preset="top">Top heavy</button>
+        <button class="pill" data-preset="bottom">Base heavy</button>
+        <button class="pill" data-preset="center-col">Centre cols</button>
+      </div>
       <div class="s1-sec-label">Structure</div>
       <button type="button" class="s1-mini-toggle" id="s1-toggle-structure-guide" aria-expanded="false" aria-controls="s1-structure-guide">
         <span class="s1-acc-chev" aria-hidden="true">▸</span> Guide &amp; live readout
@@ -85,14 +68,19 @@
         <button class="pill" data-v="mirror">Mirror L↔R</button>
         <button class="pill" data-v="rotate">180° match</button>
       </div>
+      <div class="btn-row"><button class="btn" id="btn-rand-rules">Randomize</button></div>
+      <button type="button" class="s1-mini-toggle" id="s1-toggle-extra" aria-expanded="false" aria-controls="s1-extra-params">
+        <span class="s1-acc-chev" aria-hidden="true">▸</span><span id="s1-toggle-extra-label">Show all parameters</span>
+      </button>
+      <div id="s1-extra-params" hidden>
       <div class="s1-acc">
         <button type="button" class="s1-acc-head" id="s1-acc-render-head" aria-expanded="true" aria-controls="s1-acc-render-body">
           <span class="s1-acc-chev" aria-hidden="true">▾</span> Render style
         </button>
         <div id="s1-acc-render-body" class="s1-acc-body">
           <div class="pills" id="style-pills">
-            <button class="pill" data-v="none">None</button>
-            <button class="pill on" data-v="concentric">Concentric</button>
+            <button class="pill on" data-v="none">None</button>
+            <button class="pill" data-v="concentric">Concentric</button>
             <button class="pill" data-v="hlines">H-Lines</button>
             <button class="pill" data-v="diagonal">Diagonal</button>
             <button class="pill" data-v="dots">Dots</button>
@@ -102,14 +90,29 @@
           <div class="srow"><span class="slabel">Gap</span><input type="range" id="r-gap" min="3" max="14" step="0.5" value="6"><span class="sval" id="rv-gap">6.0</span></div>
         </div>
       </div>
-      <div class="btn-row"><button class="btn" id="btn-rand-rules">Randomize</button></div>
-        </div><!-- end s1-col-rules -->
-      <!-- shown only in intro mode -->
-      <div id="s1-intro-generate" style="margin-top:28px;flex-direction:column;align-items:center;gap:8px;">
-        <button class="btn primary big" id="btn-generate-intro">Apply Rules →</button>
-        <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#ddd;">Open the preview workspace</div>
+        <div id="s1-col-mask">
+          <div class="s1-acc">
+            <button type="button" class="s1-acc-head" id="s1-acc-mask-head" aria-expanded="false" aria-controls="s1-acc-mask-body">
+              <span class="s1-acc-chev" aria-hidden="true">▸</span> Custom mask — paint cells
+            </button>
+            <div id="s1-acc-mask-body" class="s1-acc-body" hidden>
+              <div style="font-size:9px;color:#aaa;letter-spacing:.05em;line-height:1.7;margin-bottom:10px;">
+                5×4 grid maps to every letter's canvas.<br><b style="color:#555">Black = allowed · White = blocked</b><br>
+                Drag to paint · right-click drag to block (same as letter override).
+              </div>
+              <div class="mask-preview-row">
+                <div class="mask-block"><div class="mask-block-label">Mask</div><div id="mask-grid"></div></div>
+                <div class="mask-block mask-block--preview">
+                  <div class="mask-block-label">Preview on <span id="mask-preview-letter-label">A</span></div>
+                  <canvas id="mask-preview-mini" width="112" height="110"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      </div><!-- end s1-inner -->
+        </div>
+      </div>
     </div>
 
     <!-- STEP 2 LEFT -->
@@ -119,6 +122,7 @@
       <div class="sec">Overrides</div>
       <div style="font-size:24px;font-weight:700;color:#222;margin-bottom:2px;"><span id="ov-count">0</span> / 26</div>
       <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;">letters overridden</div>
+      <p id="s2-ov-empty-hint" class="s2-ov-empty-hint">No overrides yet — click a letter in the grid to paint its brick layout, then continue to <b>Export &amp; Poster</b> when you’re done.</p>
       <div style="font-size:9px;color:#ccc;letter-spacing:.06em;text-transform:uppercase;line-height:2;margin-bottom:20px;">click letter → edit override<br>reset → button on overridden card</div>
       <div class="btn-row" style="flex-direction:column;">
         <button class="btn" id="btn-clear-ov">Clear All Overrides</button>
@@ -126,9 +130,19 @@
       </div>
     </div>
 
-    <!-- STEP 3 LEFT -->
+    <!-- STEP 3 LEFT — Sheet / Poster panels (sync with right) -->
     <div id="s3-left" class="step-plate step-plate--above" data-step="3">
-      <div class="sec">Typesetting</div>
+      <div id="s3-left-stack" class="s3-left-stack">
+      <div class="s3-canvas-target-bar s3-left-canvas-bar">
+        <span class="s3-view-label">Panel</span>
+        <div class="pills" id="s3-canvas-target-pills-left">
+          <button type="button" class="pill on" data-v="sheet">Sheet &amp; typeset</button>
+          <button type="button" class="pill" data-v="poster">Poster</button>
+        </div>
+      </div>
+      <div id="s3-left-main-stage" class="s3-left-main-stage">
+      <div id="s3-left-sheet-panel" class="s3-left-panel on">
+      <div class="sec" id="s3-export-top">Typesetting</div>
       <p class="sec-sub" style="margin-top:-4px;">A–Z and spaces only · line breaks kept</p>
       <textarea id="s3-type-text" spellcheck="false" placeholder="Try a headline…"></textarea>
       <div class="sec" style="margin-top:16px;">Typography</div>
@@ -143,15 +157,15 @@
         <div class="sec">Background</div>
         <div class="pills" id="bg-pills"><button class="pill on" data-v="white">White</button><button class="pill" data-v="black">Black</button></div>
       </div>
+      <p class="s3-poster-hint">Download the character-sheet PNG on the right, or switch to <b>Poster</b> above for motion &amp; deconstruction.</p>
       <div class="btn-row" style="flex-direction:column;margin-top:20px;">
         <button class="btn primary big" id="btn-export">Download PNG</button>
-        <button class="btn" type="button" id="btn-go-poster" style="margin-top:6px;">Deconstruct → Poster Lab</button>
         <button class="btn" id="btn-back-2" style="margin-top:6px;">← Back to Overrides</button>
       </div>
-    </div>
-
-    <!-- STEP 4 LEFT — Poster Lab -->
-    <div id="s4-left" class="step-plate step-plate--above" data-step="4" style="overflow-y:auto;overflow-x:hidden;">
+      </div>
+      <div id="s3-left-poster-panel" class="s3-left-panel">
+      <div class="sec" style="margin-top:0;">Poster Lab</div>
+      <p class="sec-sub" style="margin-top:-4px;">Brick grid → Point · Line · Plane · motion (optional)</p>
 
       <div style="padding:8px 0 12px;border-bottom:1px solid #e8e8e8;margin-bottom:4px;">
         <div id="s4-source-wrap">
@@ -247,10 +261,13 @@
 
 
       <div class="btn-row" style="flex-direction:column;margin-top:16px;">
-        <button class="btn primary big" type="button" id="btn-s4-png">Download PNG</button>
+        <button class="btn primary big" type="button" id="btn-s4-png">Poster PNG</button>
         <button class="btn" type="button" id="btn-s4-webm" style="margin-top:6px;">Export WebM</button>
         <button class="btn" type="button" id="btn-s4-rand" style="margin-top:6px;">Randomize</button>
-        <button class="btn" type="button" id="btn-back-3" style="margin-top:6px;">← Back to Export</button>
+        <button class="btn" type="button" id="btn-s3-scroll-export" style="margin-top:6px;">↑ Typesetting &amp; sheet export</button>
+      </div>
+      </div>
+      </div>
       </div>
     </div>
 
@@ -263,7 +280,7 @@
     <div id="s1-right" class="step-plate step-plate--active" data-step="1">
       <div id="s1-bar" class="workbar">
         <span class="az-view-label">Live preview</span>
-        <span class="s1-hint">Adjust rules on the left · updates live</span>
+        <span class="s1-hint">Left = rules (live) · footer = Generate A–Z</span>
       </div>
       <div id="s1-scroll" class="work-scroll">
         <div class="pletter-row" id="preview-letter-sel"></div>
@@ -302,15 +319,23 @@
       </div>
       <div id="az-scroll"><div id="az-grid" class="az-letter-grid"></div></div>
       <div style="padding:12px 20px;border-top:1px solid #e8e8e8;flex-shrink:0;display:flex;justify-content:flex-end;">
-        <button class="btn primary" id="btn-go-export">Go to Export →</button>
+        <button class="btn primary" id="btn-go-export">Export &amp; Poster →</button>
       </div>
     </div>
 
-    <!-- STEP 3 RIGHT -->
+    <!-- STEP 3 RIGHT — Sheet vs Poster canvas switch (full height each) -->
     <div id="s3-right" class="step-plate step-plate--above" data-step="3">
+      <div id="s3-right-stack" class="s3-right-stack">
       <div id="s3-bar" class="workbar">
-        <span class="az-info">Step 3 — Review</span>
-        <span class="s3-work-hint">Typesetting · then character sheet for PNG</span>
+        <span class="az-info" id="s3-right-top">Step 3 — Sheet &amp; Poster</span>
+        <span class="s3-work-hint" id="s3-right-hint">Switch canvas — full height each</span>
+      </div>
+      <div id="s3-canvas-target-bar" class="s3-canvas-target-bar">
+        <span class="s3-view-label">Canvas</span>
+        <div class="pills" id="s3-canvas-target-pills">
+          <button type="button" class="pill on" data-v="sheet">Sheet &amp; typeset</button>
+          <button type="button" class="pill" data-v="poster">Poster</button>
+        </div>
       </div>
       <div id="s3-view-bar">
         <span class="s3-view-label">Preview mode</span>
@@ -321,6 +346,8 @@
           <button type="button" class="pill" data-v="plane">Plane</button>
         </div>
       </div>
+      <div id="s3-main-stage" class="s3-main-stage">
+      <div id="s3-sheet-panel" class="s3-canvas-panel on">
       <div id="s3-scroll" class="work-scroll">
         <div id="s3-preview-area">
           <div class="s3-block">
@@ -328,21 +355,22 @@
             <div class="s3-type-frame" id="s3-type-frame"><canvas id="s3-type-canvas" width="400" height="120"></canvas></div>
           </div>
           <div class="s3-block">
-            <div class="s3-block-label">Character set<span>What the Download PNG button exports</span></div>
+            <div class="s3-block-label">Character set<span>What the sheet Download PNG button exports</span></div>
             <div class="s3-sheet-frame"><canvas id="s3-canvas"></canvas></div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- STEP 4 RIGHT — Poster canvas -->
-    <div id="s4-right" class="step-plate step-plate--above" data-step="4">
+      </div>
+      <div id="s3-poster-panel" class="s3-canvas-panel">
       <div id="s4-bar" class="workbar">
-        <span class="az-info">Poster Lab — <span style="color:#bbb;font-weight:400;">brick grid →</span> Point · Line · Plane</span>
-        <span class="s3-work-hint">scale &amp; rotate on the left · export PNG or WebM</span>
+        <span class="az-info">Poster — <span style="color:#bbb;font-weight:400;">brick →</span> Point · Line · Plane</span>
+        <span class="s3-work-hint">controls on the left · Poster PNG / WebM</span>
       </div>
       <div id="s4-canvas-area">
         <canvas id="s4-poster-canvas"></canvas>
+      </div>
+      </div>
+      </div>
       </div>
     </div>
 
