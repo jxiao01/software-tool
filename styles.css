@@ -59,6 +59,7 @@ body {
 .s1-path-hint { font-size:9px; color:#666; line-height:1.5; letter-spacing:.02em; margin:0 0 14px; padding:10px 10px; max-width:280px; border:1px solid #e8e8e8; background:#fafafa; }
 .s1-path-hint strong { color:#222; font-weight:600; }
 .s1-canvas-hint { font-size:9px; color:#888; line-height:1.55; letter-spacing:.02em; margin:0 0 12px; max-width:280px; }
+.s1-adv-hint { font-size:8px; color:#999; letter-spacing:.03em; line-height:1.5; margin:0 0 10px; max-width:280px; }
 .s2-ov-empty-hint { font-size:9px; color:#777; line-height:1.55; letter-spacing:.02em; margin:-8px 0 14px; max-width:280px; }
 .s2-ov-empty-hint b { color:#333; font-weight:600; }
 .s3-poster-hint { font-size:9px; color:#888; line-height:1.5; letter-spacing:.02em; margin:0 0 12px; max-width:320px; }
@@ -150,9 +151,20 @@ html.no-step-transition .step-plate { transition:none !important; }
 }
 .s1-acc:first-child .s1-acc-head { margin-top:0; padding-top:0; }
 .s1-acc-head:hover { color:#222; }
+.s2-rules-acc .s1-acc-head { margin-top:6px; }
 .s1-acc-chev { display:inline-block; width:14px; color:#bbb; font-size:10px; letter-spacing:0; flex-shrink:0; }
 .s1-acc-body { padding-bottom:4px; overflow:hidden; max-height:600px; transition:max-height 0.45s cubic-bezier(0.2,0.85,0.28,1), opacity 0.35s ease; opacity:1; }
 .s1-acc-body[hidden] { display:block !important; max-height:0 !important; opacity:0; pointer-events:none; padding-bottom:0; }
+.s4-advanced-wrap { margin-top:8px; }
+.s4-advanced-wrap .s1-acc-head { margin-top:10px; }
+.s4-advanced-wrap .s1-acc-body { padding-bottom:2px; }
+.s4-advanced-hint {
+  font-size:8px;
+  color:#999;
+  letter-spacing:.03em;
+  line-height:1.5;
+  margin:6px 0 12px;
+}
 .s1-sec-label { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:#999; margin:18px 0 8px; font-weight:600; }
 .s1-sec-label:first-of-type { margin-top:0; }
 .s1-mini-toggle {
@@ -173,6 +185,14 @@ html.no-step-transition .step-plate { transition:none !important; }
 .mg-cell { width:28px; height:22px; border:1px solid #e8e8e8; cursor:pointer; background:#fff; transition:background .08s,border-color .08s; flex-shrink:0; }
 .mg-cell.on { background:#222; border-color:#222; }
 .srow { display:grid; grid-template-columns:80px 1fr 34px; align-items:center; gap:8px; margin-bottom:9px; }
+.srange-stack { min-width:0; display:flex; flex-direction:column; gap:3px; justify-content:center; }
+.srange-bounds {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:8px; font-variant-numeric:tabular-nums; color:#bbb; letter-spacing:0.04em; line-height:1; padding:0 1px;
+}
+.srange-bounds span { min-width:1.1em; }
+.srange-bounds span:last-child { text-align:right; }
+.srow-wrap > .srow-hint { margin:-4px 0 10px; max-width:278px; }
 .slabel { font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#999; }
 .sval   { font-size:9px; color:#777; text-align:right; font-variant-numeric:tabular-nums; }
 input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:18px; background:transparent; }
@@ -222,6 +242,17 @@ input[type=range]::-moz-range-thumb { width:10px; height:10px; border:1px solid 
 .az-legend { font-weight:400; letter-spacing:.04em; text-transform:none; color:#aaa; }
 .az-legend .lg-n { color:#d8d8d8; }
 .az-legend .lg-o { color:#0078ff; font-weight:700; }
+#s1-az-scroll { width:100%; max-width:860px; align-self:stretch; margin:0 auto; }
+#s1-az-grid.az-letter-grid { grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; }
+.lcard.lcard--s1 {
+  cursor:default;
+  border-color:#e6e6e6;
+}
+.lcard.lcard--s1:hover { border-color:#e6e6e6; }
+.lcard.lcard--s1 .lname { display:none; }
+.lcard.lcard--s1 .odot,
+.lcard.lcard--s1 .diff-strip,
+.lcard.lcard--s1 .lcard-reset-btn { display:none !important; }
 #az-scroll { flex:1; overflow-y:auto; min-height:0; padding:16px 20px; }
 .az-letter-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; align-content:start; }
 .lcard { border:1px solid #e8e8e8; cursor:pointer; position:relative; z-index:0; transition:border-color .15s, box-shadow .15s; background:#fff; }
