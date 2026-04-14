@@ -29,6 +29,11 @@ const SKELETON={
   Y:[[1,0,0,1],[1,0,0,1],[1,1,1,1],[0,1,1,0],[0,1,1,0]],
   Z:[[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
 };
+const CELL_ON_FREQ=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+for(const l of LETTERS){
+  const sk=SKELETON[l];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(sk[r][c])CELL_ON_FREQ[r][c]++;
+}
 
 //  STEP 1–3 STATE
 
@@ -119,14 +124,14 @@ function goStep(n){
     else if(s>maxStep)t.classList.add('locked');
   });
   syncStepPlates(n,prev);
-  if(n===1)setStatus('Step 1 — Set your rules, then click Generate A–Z');
+  if(n===1)setStatus('Step 1 — Set your rules, then go to Overrides');
   if(n===2){syncRuleSummary();syncAzViewUI();refreshAZ();setStatus('Step 2 — Click letters to override');}
-  if(n===3){syncExportSummary();renderS3();p4Phase=0;renderS4SourcePreview();setStatus('Step 3 — Sheet PNG, typesetting & Poster Lab');setS3CanvasTarget(s3CanvasTarget,{skipSheetRefresh:true,instant:true});}
+  if(n===3){syncExportSummary();renderS3();p4Phase=0;renderS4SourcePreview();setStatus('Step 3 — Output and Poster');setS3CanvasTarget(s3CanvasTarget,{skipSheetRefresh:true,instant:true});}
   syncTopbarSub(n);
 }
 function syncTopbarSub(n){
   const el=document.getElementById('topbar-sub');if(!el)return;
-  const map={1:'Canvas → Structure → Generate A–Z (right →)',2:'A–Z grid · click letters to override bricks',3:'Step 3 — Sheet / Poster (left & right panels)'};
+  const map={1:'Step 1 · Rules',2:'Step 2 · Overrides',3:'Step 3 · Output / Poster'};
   el.textContent=map[n]||map[1];
 }
 function setS3CanvasTarget(v,opts){
@@ -152,7 +157,7 @@ function setS3CanvasTarget(v,opts){
   if(leftPoster)leftPoster.classList.toggle('on',v==='poster');
   document.querySelectorAll(S3_CANVAS_PILL_SEL).forEach(q=>q.classList.toggle('on',q.dataset.v===v));
   const hint=document.getElementById('s3-right-hint');
-  if(hint)hint.textContent=v==='sheet'?'Typeset & sheet — Poster tab matches the left panel':'Poster canvas — left panel has the same controls';
+  if(hint)hint.textContent=v==='sheet'?'Output':'Poster';
   const dropInstant=()=>{
     stage?.classList.remove('s3-main-stage--instant');
     leftStage?.classList.remove('s3-left-main-stage--instant');
@@ -195,7 +200,62 @@ function generateGrid(letter){
   if(rules.continuity===2){const comp=lgComp(g);for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g[r][c]&&!comp[r][c])g[r][c]=0;}
   if(rules.symmetry==='mirror')for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)g[r][COLS-1-c]=g[r][c];
   else if(rules.symmetry==='rotate')for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)g[ROWS-1-r][COLS-1-c]=Math.max(g[r][c],g[ROWS-1-r][COLS-1-c]);
+  preserveLetterIdentity(letter,skel,g);
   return g;
+}
+function identityScore(sk,r,c){
+  if(!sk[r][c])return -99;
+  const rarity=(1-(CELL_ON_FREQ[r][c]/LETTERS.length))*10;
+  const edge=(r===0||r===ROWS-1||c===0||c===COLS-1)?1.25:0;
+  const ep=isEP(sk,r,c)?2.8:0;
+  return rarity+edge+ep;
+}
+function pickIdentityCells(sk){
+  const all=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(!sk[r][c]||!rules.mask[r][c])continue;
+    all.push({r,c,s:identityScore(sk,r,c)});
+  }
+  all.sort((a,b)=>b.s-a.s);
+  const need=rules.density<=2?1:(rules.density===3?2:3);
+  const picked=[],usedCols=new Set();
+  for(const it of all){
+    if(picked.length>=need)break;
+    if(!usedCols.has(it.c)){picked.push(it);usedCols.add(it.c);}
+  }
+  for(const it of all){
+    if(picked.length>=need)break;
+    if(!picked.some(p=>p.r===it.r&&p.c===it.c))picked.push(it);
+  }
+  return picked;
+}
+function preserveLetterIdentity(letter,skel,g){
+  const key=(r,c)=>r+'-'+c;
+  const pinned=pickIdentityCells(skel);
+  const lock=new Set();
+  for(const it of pinned){
+    g[it.r][it.c]=1;
+    lock.add(key(it.r,it.c));
+  }
+  for(let c=0;c<COLS;c++){
+    const rows=[];
+    for(let r=0;r<ROWS;r++)if(g[r][c])rows.push({
+      r,
+      pinned:lock.has(key(r,c)),
+      s:identityScore(skel,r,c)+(cntN(g,r,c)*0.45)
+    });
+    if(rows.length<=rules.density)continue;
+    rows.sort((a,b)=>{
+      if(a.pinned!==b.pinned)return a.pinned?-1:1;
+      return b.s-a.s;
+    });
+    const keep=new Set(rows.slice(0,rules.density).map(x=>x.r));
+    for(let r=0;r<ROWS;r++)if(g[r][c]&&!keep.has(r)&&!lock.has(key(r,c)))g[r][c]=0;
+  }
+  if(gridCount(g)===0){
+    const fallback=pinned[0]||{r:2,c:1};
+    if(rules.mask[fallback.r][fallback.c])g[fallback.r][fallback.c]=1;
+  }
 }
 function isEP(sk,r,c){if(!sk[r][c])return false;let n=0;if(r>0&&sk[r-1][c])n++;if(r<ROWS-1&&sk[r+1][c])n++;if(c>0&&sk[r][c-1])n++;if(c<COLS-1&&sk[r][c+1])n++;return n<=1;}
 function cntN(g,r,c){let n=0;if(r>0&&g[r-1][c])n++;if(r<ROWS-1&&g[r+1][c])n++;if(c>0&&g[r][c-1])n++;if(c<COLS-1&&g[r][c+1])n++;return n;}
@@ -584,8 +644,26 @@ function refreshMaskMini(highlight){
 const MASK_PRESETS={all:()=>Array.from({length:ROWS},()=>[1,1,1,1]),left:()=>Array.from({length:ROWS},()=>[1,1,0,0]),right:()=>Array.from({length:ROWS},()=>[0,0,1,1]),top:()=>Array.from({length:ROWS},(_,r)=>r<3?[1,1,1,1]:[0,0,0,0]),bottom:()=>Array.from({length:ROWS},(_,r)=>r>=2?[1,1,1,1]:[0,0,0,0]),'center-col':()=>Array.from({length:ROWS},()=>[0,1,1,0])};
 document.querySelectorAll('#mask-presets .pill').forEach(p=>p.addEventListener('click',()=>{const pr=MASK_PRESETS[p.dataset.preset];if(!pr)return;rules.mask=pr();document.querySelectorAll('#mask-presets .pill').forEach(q=>q.classList.toggle('on',q===p));buildMaskGrid();applyRuleChange();}));
 function buildPreviewSel(){
-  const el=document.getElementById('preview-letter-sel');el.innerHTML='';
+  const el=document.getElementById('preview-letter-sel');if(!el)return;el.innerHTML='';
   for(const l of LETTERS){const b=document.createElement('div');b.className='pletter'+(l===previewLetter?' on':'');b.textContent=l;b.addEventListener('click',()=>{previewLetter=l;document.getElementById('mask-preview-letter-label').textContent=l;document.querySelectorAll('#preview-letter-sel .pletter').forEach(x=>x.classList.toggle('on',x.textContent===l));refreshPreview();});el.appendChild(b);}
+}
+function buildS1AZGrid(){
+  const el=document.getElementById('s1-az-grid');if(!el)return;
+  el.innerHTML='';
+  for(const letter of LETTERS){
+    const card=document.createElement('div');card.className='lcard lcard--s1';card.id='s1-lcard-'+letter;
+    const cvs=document.createElement('canvas');cvs.width=120;cvs.height=120;card.appendChild(cvs);
+    const ln=document.createElement('div');ln.className='lname';ln.textContent=letter;card.appendChild(ln);
+    el.appendChild(card);
+  }
+}
+function refreshS1PreviewGrid(){
+  for(const letter of LETTERS){
+    const card=document.getElementById('s1-lcard-'+letter);if(!card)continue;
+    const cvs=card.querySelector('canvas');const ctx=cvs.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,cvs.width,cvs.height);
+    drawLetterGrid(ctx,generateGrid(letter),cvs.width,cvs.height,rules.style,rules.stroke,rules.gap,20,255);
+  }
 }
 function buildAZGrid(){
   const el=document.getElementById('az-grid');el.innerHTML='';
@@ -609,9 +687,13 @@ function updateRuleLiveReadout(){
   el.innerHTML=`<strong>${previewLetter}</strong> · ${n} bricks · ≤${rules.density} / column · merge: ${RULE_MERGE_READOUT[rules.continuity]} · fill: ${RULE_FILL_READOUT[rules.weight]} · ${symLab[rules.symmetry]}`;
 }
 function refreshPreview(){
-  const cvs=document.getElementById('preview-canvas');const ctx=cvs.getContext('2d');
-  ctx.fillStyle='#fff';ctx.fillRect(0,0,cvs.width,cvs.height);
-  drawLetterGrid(ctx,generateGrid(previewLetter),cvs.width,cvs.height,rules.style,rules.stroke,rules.gap);
+  const cvs=document.getElementById('preview-canvas');
+  if(cvs){
+    const ctx=cvs.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,cvs.width,cvs.height);
+    drawLetterGrid(ctx,generateGrid(previewLetter),cvs.width,cvs.height,rules.style,rules.stroke,rules.gap);
+  }
+  refreshS1PreviewGrid();
   refreshMaskMini(null);updateRuleLiveReadout();
 }
 function refreshLetter(letter){
@@ -619,19 +701,19 @@ function refreshLetter(letter){
   const cvs=card.querySelector('canvas');const ctx=cvs.getContext('2d');
   const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;
   ctx.fillStyle=exportBg==='black'?'#141414':'#fff';ctx.fillRect(0,0,cvs.width,cvs.height);
-  const grid2=azViewMode==='system'?generateGrid(letter):getGrid(letter);
-  drawLetterGrid(ctx,grid2,cvs.width,cvs.height,rules.style,rules.stroke,rules.gap,fg,bg);
+  drawLetterGrid(ctx,getGrid(letter),cvs.width,cvs.height,rules.style,rules.stroke,rules.gap,fg,bg);
   const rb=card.querySelector('.lcard-reset-btn');
-  if(azViewMode==='system'){card.classList.remove('overridden');card.querySelector('.diff-fill').style.width='0%';if(rb)rb.style.display='none';}
-  else{const isOv=!!overrides[letter];card.classList.toggle('overridden',isOv);if(isOv){card.querySelector('.diff-fill').style.width=(gridDiff(overrides[letter],generateGrid(letter))*100)+'%';}else card.querySelector('.diff-fill').style.width='0%';if(rb)rb.style.display=isOv?'block':'none';}
+  const isOv=!!overrides[letter];
+  card.classList.toggle('overridden',isOv);
+  if(isOv){card.querySelector('.diff-fill').style.width=(gridDiff(overrides[letter],generateGrid(letter))*100)+'%';}
+  else card.querySelector('.diff-fill').style.width='0%';
+  if(rb)rb.style.display=isOv?'block':'none';
 }
 function refreshAZ(){for(const l of LETTERS)refreshLetter(l);updateOvCount();}
-function syncAzBarHint(){const el=document.getElementById('az-bar-hint');if(!el)return;el.innerHTML=azViewMode==='system'?'System view — switch to <b>Your alphabet</b> to edit':'click letter = edit · <b>Reset</b> on card restores rule (only when overridden)';}
+function syncAzBarHint(){const el=document.getElementById('az-bar-hint');if(!el)return;el.textContent='click letter to edit';}
 function syncAzViewUI(){
-  const root=document.getElementById('s2-right');if(!root)return;root.dataset.azView=azViewMode;
-  document.querySelectorAll('#az-view-pills .pill').forEach(p=>p.classList.toggle('on',p.dataset.v===azViewMode));
-  document.getElementById('az-cap-system').style.display=azViewMode==='system'?'inline':'none';
-  document.getElementById('az-cap-yours').style.display=azViewMode==='yours'?'inline':'none';
+  const root=document.getElementById('s2-right');if(!root)return;
+  root.dataset.azView='yours';
   syncAzBarHint();
 }
 function updateOvCount(){
@@ -829,7 +911,17 @@ function resetOverride(letter){delete overrides[letter];if(Object.keys(overrides
 
 //  STEP 1-3 CONTROLS
 
-function bindSlider(id,valId,key,fmt){const el=document.getElementById(id),vl=document.getElementById(valId);el.addEventListener('input',()=>{rules[key]=parseFloat(el.value);vl.textContent=fmt?fmt(rules[key]):rules[key];applyRuleChange();});}
+function bindSlider(id,valId,key,fmt){
+  const el=document.getElementById(id),vl=document.getElementById(valId);
+  function sync(){
+    rules[key]=parseFloat(el.value);
+    const t=fmt?fmt(rules[key]):rules[key];
+    vl.textContent=t;
+    el.setAttribute('aria-valuetext',String(t));
+  }
+  el.addEventListener('input',()=>{sync();applyRuleChange();});
+  sync();
+}
 bindSlider('r-density','rv-density','density');
 bindSlider('r-cont','rv-cont','continuity',v=>RULE_MERGE_READOUT[v]);
 bindSlider('r-weight','rv-weight','weight',v=>RULE_FILL_READOUT[v]);
@@ -843,14 +935,14 @@ document.getElementById('btn-rand-rules').addEventListener('click',()=>{
   rules.density=1+Math.floor(Math.random()*5);rules.continuity=Math.floor(Math.random()*3);rules.weight=Math.floor(Math.random()*3);
   rules.symmetry=['free','mirror','rotate'][Math.floor(Math.random()*3)];rules.stroke=+(0.7+Math.random()*1.8).toFixed(1);rules.gap=+(3+Math.random()*10).toFixed(1);
   rules.style=['none','concentric','hlines','diagonal','dots','solid'][Math.floor(Math.random()*6)];
-  document.getElementById('r-density').value=rules.density;document.getElementById('rv-density').textContent=rules.density;
-  document.getElementById('r-cont').value=rules.continuity;document.getElementById('rv-cont').textContent=RULE_MERGE_READOUT[rules.continuity];
-  document.getElementById('r-weight').value=rules.weight;document.getElementById('rv-weight').textContent=RULE_FILL_READOUT[rules.weight];
-  document.getElementById('r-stroke').value=rules.stroke;document.getElementById('rv-stroke').textContent=rules.stroke.toFixed(1);
-  document.getElementById('r-gap').value=rules.gap;document.getElementById('rv-gap').textContent=rules.gap.toFixed(1);
+  document.getElementById('r-density').value=rules.density;document.getElementById('rv-density').textContent=rules.density;document.getElementById('r-density').setAttribute('aria-valuetext',String(rules.density));
+  document.getElementById('r-cont').value=rules.continuity;document.getElementById('rv-cont').textContent=RULE_MERGE_READOUT[rules.continuity];document.getElementById('r-cont').setAttribute('aria-valuetext',RULE_MERGE_READOUT[rules.continuity]);
+  document.getElementById('r-weight').value=rules.weight;document.getElementById('rv-weight').textContent=RULE_FILL_READOUT[rules.weight];document.getElementById('r-weight').setAttribute('aria-valuetext',RULE_FILL_READOUT[rules.weight]);
+  document.getElementById('r-stroke').value=rules.stroke;document.getElementById('rv-stroke').textContent=rules.stroke.toFixed(1);document.getElementById('r-stroke').setAttribute('aria-valuetext',rules.stroke.toFixed(1));
+  document.getElementById('r-gap').value=rules.gap;document.getElementById('rv-gap').textContent=rules.gap.toFixed(1);document.getElementById('r-gap').setAttribute('aria-valuetext',rules.gap.toFixed(1));
   document.querySelectorAll('#sym-pills .pill').forEach(p=>p.classList.toggle('on',p.dataset.v===rules.symmetry));
   document.querySelectorAll('#style-pills .pill').forEach(p=>p.classList.toggle('on',p.dataset.v===rules.style));
-  buildMaskGrid();applyRuleChange();setStatus('Rules randomized — Generate A–Z when ready');
+  buildMaskGrid();applyRuleChange();setStatus('Rules randomized — go to Overrides when ready');
 });
 document.getElementById('btn-generate').addEventListener('click',()=>{
   if(blockStep2IfRulesOvPending())return;
@@ -870,7 +962,6 @@ document.getElementById('btn-s3-scroll-export').addEventListener('click',()=>{
 document.getElementById('btn-clear-ov').addEventListener('click',()=>{overrides={};rulesOverrideSnapshot=null;checkRulesOverrideDesync();refreshAfterOverrideReset();setStatus('All overrides cleared');});
 document.getElementById('rules-ov-reset').addEventListener('click',()=>{overrides={};rulesOverrideSnapshot=null;document.getElementById('rules-ov-banner').classList.remove('vis');refreshAfterOverrideReset();setStatus('Overrides reset');});
 document.getElementById('rules-ov-keep').addEventListener('click',()=>{rulesOverrideSnapshot=cloneRules();document.getElementById('rules-ov-banner').classList.remove('vis');setStatus('Kept painted grids — baseline updated');});
-document.querySelectorAll('#az-view-pills .pill').forEach(p=>p.addEventListener('click',()=>{azViewMode=p.dataset.v;syncAzViewUI();refreshAZ();}));
 function bindS1Accordions(){
   function wire(btn){
     const panel=document.getElementById(btn.getAttribute('aria-controls'));
@@ -1061,17 +1152,18 @@ syncTopbarSub(1);
 bindS1Accordions();
 (function(){
   const btn=document.getElementById('s1-toggle-extra'),lab=document.getElementById('s1-toggle-extra-label');
-  function sync(){if(!btn||!lab)return;lab.textContent=btn.getAttribute('aria-expanded')==='true'?'Hide extra parameters':'Show all parameters';}
+  function sync(){if(!btn||!lab)return;lab.textContent=btn.getAttribute('aria-expanded')==='true'?'Hide advanced controls':'Show advanced controls';}
   if(btn)btn.addEventListener('click',()=>requestAnimationFrame(sync));
   sync();
 })();
 bindS3TypeFrameResize();
 buildMaskGrid();
 buildPreviewSel();
+buildS1AZGrid();
 updateOvCount();
 refreshPreview();
 buildS4LetterRow();
 (function(){const t=document.getElementById('s3-type-text');if(t&&!t.value.trim())t.value="WELCOME TO JUSTIN'S WORLD";})();
 p4SyncUI();
 renderS4SourcePreview();
-setStatus('Step 1 — Set your rules, then click Generate A–Z');
+setStatus('Step 1 — Set your rules, then go to Overrides');
