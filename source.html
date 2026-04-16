@@ -1,0 +1,4049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brick System</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; outline:none; }
+body { background:#fff; font-family:Helvetica,Arial,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; user-select:none; }
+
+/* ── Topbar ── */
+#topbar { display:flex; align-items:center; justify-content:space-between; padding:0 20px; height:44px; border-bottom:1px solid #e8e8e8; flex-shrink:0; gap:16px; }
+#topbar .meta { font-size:10px; letter-spacing:.13em; color:#bbb; text-transform:uppercase; display:flex; gap:6px; align-items:center; flex-shrink:0; white-space:nowrap; }
+#topbar .meta span { color:#222; }
+#topbar .meta .sep { color:#e0e0e0; }
+#topbar .meta button.meta-link {
+  font-family:inherit; font-size:inherit; letter-spacing:inherit; text-transform:inherit;
+  color:#222; background:transparent; border:none; padding:0; margin:0; line-height:inherit;
+  cursor:default; pointer-events:none;
+}
+#topbar .meta button.meta-link.is-active {
+  cursor:pointer; pointer-events:auto; border-bottom:1px dotted #bbb;
+}
+#topbar .meta button.meta-link.is-active:hover { border-bottom-color:#222; color:#000; }
+#topbar .actions { display:flex; gap:6px; align-items:center; flex:1; justify-content:flex-end; }
+#topbar .btn-group { display:flex; gap:0; }
+#topbar .btn-group .btn { border-right-width:0; }
+#topbar .btn-group .btn:last-child { border-right-width:1px; }
+#topbar .divider { width:1px; height:16px; background:#e0e0e0; flex-shrink:0; margin:0 4px; }
+
+/* ── Buttons ── */
+.btn { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.12em; text-transform:uppercase; padding:5px 12px; border:1px solid #ddd; background:#fff; color:#555; cursor:pointer; transition:background .12s,color .12s,border-color .12s; white-space:nowrap; }
+.btn:hover { background:#222; color:#fff; border-color:#222; }
+.btn.primary { background:#222; color:#fff; border-color:#222; }
+.btn.primary:hover { background:#444; }
+.btn.active { background:#222; color:#fff; border-color:#222; }
+.btn:disabled { opacity:.35; cursor:default; pointer-events:none; }
+.menu-wrap { position:relative; display:inline-flex; }
+.menu-pop { display:none; position:absolute; top:100%; right:0; margin-top:4px; min-width:150px; background:#fff; border:1px solid #ddd; box-shadow:2px 2px 0 rgba(0,0,0,.08); z-index:250; }
+.menu-pop.visible { display:block; }
+.menu-pop .btn { width:100%; border:none; border-bottom:1px solid #eee; text-align:left; padding:8px 12px; }
+.menu-pop .btn:last-child { border-bottom:none; }
+
+/* ── Custom panel ── */
+#custom-panel { display:none; position:absolute; z-index:100; background:#fff; border:1px solid #222; padding:16px; width:288px; box-shadow:2px 2px 0 rgba(0,0,0,.08); }
+#custom-panel.visible { display:block; }
+#custom-panel h3 { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#999; margin-bottom:12px; cursor:grab; user-select:none; }
+.panel-section { margin-bottom:12px; }
+.panel-section label { display:block; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#aaa; margin-bottom:6px; }
+.panel-section .panel-microhint { font-size:8px; letter-spacing:.04em; text-transform:none; color:#bbb; line-height:1.35; margin:-2px 0 8px; font-weight:400; }
+.ctrl-row { display:grid; grid-template-columns:58px 1fr 44px; align-items:center; gap:8px; margin-bottom:6px; }
+.ctrl-row .k { font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#999; }
+.ctrl-row .v { font-size:9px; color:#888; text-align:right; font-variant-numeric:tabular-nums; }
+.ctrl-row input[type="range"] { -webkit-appearance:none; appearance:none; width:100%; height:18px; background:transparent; }
+.ctrl-row input[type="range"]::-webkit-slider-runnable-track { height:2px; background:#222; }
+.ctrl-row input[type="range"]::-moz-range-track { height:2px; background:#222; border:none; }
+.ctrl-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:10px; height:10px; border:1px solid #222; background:#fff; margin-top:-4px; }
+.ctrl-row input[type="range"]::-moz-range-thumb { width:10px; height:10px; border:1px solid #222; border-radius:0; background:#fff; }
+.ctrl-row input[type="range"]:focus { outline:none; }
+.ctrl-row.color { grid-template-columns:58px 1fr; }
+.ctrl-row input[type="color"] { width:100%; height:22px; border:1px solid #ddd; background:#fff; padding:0; border-radius:0; }
+.ctrl-row input[type="color"]::-webkit-color-swatch-wrapper { padding:0; }
+.ctrl-row input[type="color"]::-webkit-color-swatch { border:none; }
+.pill-group { display:flex; flex-wrap:wrap; gap:4px; }
+.pill { font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:4px 8px; border:1px solid #ddd; background:#fff; color:#555; cursor:pointer; transition:all .1s; }
+.pill:hover { border-color:#222; color:#222; }
+.pill.selected { background:#222; color:#fff; border-color:#222; }
+.panel-actions { display:flex; gap:6px; margin-top:14px; }
+.panel-actions .btn { flex:1; text-align:center; padding:7px 8px; }
+#custom-panel .close-x { position:absolute; top:10px; right:10px; font-size:14px; color:#aaa; cursor:pointer; background:none; border:none; line-height:1; padding:2px 4px; }
+#custom-panel .close-x:hover { color:#222; }
+
+/* ── Brick context menu ── */
+#brick-ctx-menu { display:none; position:fixed; z-index:200; background:#fff; border:1px solid #222; min-width:120px; box-shadow:2px 2px 0 rgba(0,0,0,.08); }
+#brick-ctx-menu.visible { display:block; }
+#brick-ctx-menu button { display:flex; align-items:center; width:100%; padding:8px 14px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#444; background:none; border:none; cursor:pointer; text-align:left; white-space:nowrap; }
+#brick-ctx-menu button:hover { background:#f5f5f5; color:#111; }
+
+/* ── Type bar ── */
+#type-bar { display:none; position:absolute; bottom:24px; left:50%; transform:translateX(-50%); z-index:10; align-items:center; gap:12px; }
+#type-bar.visible { display:flex; }
+#type-bar input { font-family:Helvetica,Arial,sans-serif; font-size:14px; letter-spacing:.15em; text-transform:uppercase; text-align:center; border:1px solid #222; background:#fff; color:#222; padding:7px 16px; width:220px; caret-color:#222; }
+#type-bar .hint { font-size:10px; letter-spacing:.1em; color:#bbb; text-transform:uppercase; white-space:nowrap; }
+#type-bar .btn-fit { padding:5px 10px; font-size:9px; letter-spacing:.1em; }
+#type-size-wrap { display:flex; align-items:center; gap:6px; }
+#type-size-wrap .k { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#999; white-space:nowrap; }
+#type-size-wrap input[type="range"] { -webkit-appearance:none; appearance:none; width:120px; height:18px; background:transparent; }
+#type-size-wrap input[type="range"]::-webkit-slider-runnable-track { height:2px; background:#222; }
+#type-size-wrap input[type="range"]::-moz-range-track { height:2px; background:#222; border:none; }
+#type-size-wrap input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:10px; height:10px; border:1px solid #222; background:#fff; margin-top:-4px; }
+#type-size-wrap input[type="range"]::-moz-range-thumb { width:10px; height:10px; border:1px solid #222; border-radius:0; background:#fff; }
+#type-size-wrap .v { font-size:9px; color:#888; min-width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+
+/* ── Canvas ── */
+#main-work { flex:1; display:flex; min-height:0; width:100%; position:relative; overflow-x:auto; overflow-y:hidden; }
+#canvas-wrap { flex:1 0 auto; min-width:100%; position:relative; overflow:visible; }
+/* Keep horizontal scroll behavior but hide scrollbar visuals */
+#main-work { -ms-overflow-style:none; scrollbar-width:none; }
+#main-work::-webkit-scrollbar { display:none; width:0; height:0; }
+/* 3D + 超宽 Word：显示细滚动条，便于拖拽平移（2D 仍隐藏） */
+#main-work.show-x-scrollbar-3d { scrollbar-width:thin; -ms-overflow-style:auto; }
+#main-work.show-x-scrollbar-3d::-webkit-scrollbar { display:block; height:10px; }
+#main-work.show-x-scrollbar-3d::-webkit-scrollbar-track { background:#f2f2f2; }
+#main-work.show-x-scrollbar-3d::-webkit-scrollbar-thumb { background:#bfbfbf; border-radius:5px; }
+#main-work.show-x-scrollbar-3d::-webkit-scrollbar-thumb:hover { background:#9a9a9a; }
+/* 3D：视口固定在 main-work 可见区（避免超宽 canvas-wrap 把 WebGL 拉成全幅、场景落在视口右侧） */
+#main-work.view-3d-lock { overflow-x:hidden; }
+#library-panel {
+  position:fixed; right:0; width:252px; z-index:280;
+  display:flex; flex-direction:column; background:#fafafa; overflow:hidden;
+  border-left:1px solid #e8e8e8; box-shadow:-4px 0 20px rgba(0,0,0,.08);
+  transform:translateX(100%); transition:transform .22s ease-out;
+  pointer-events:none;
+}
+#library-panel.library-panel--open { transform:translateX(0); pointer-events:auto; }
+.library-head { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #e8e8e8; flex-shrink:0; }
+.library-head h3 { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#222; font-weight:600; margin:0; }
+.library-status { font-size:9px; color:#c00; padding:0 12px 6px; min-height:1em; line-height:1.35; }
+.library-status.hint { color:#666; }
+.library-list { flex:1; min-height:0; overflow-y:auto; padding:8px 10px 12px; }
+.library-item { border:1px solid #e0e0e0; padding:10px; margin-bottom:8px; background:#fff; cursor:pointer; transition:border-color .12s,box-shadow .12s; }
+.library-item:hover { border-color:#ccc; }
+.library-item.library-item--selected { border-color:#222; box-shadow:0 0 0 1px #222; }
+.library-item .library-item-actions { cursor:default; }
+.library-item-title { font-size:11px; font-weight:600; color:#222; margin-bottom:4px; word-break:break-word; }
+.library-item-meta { font-size:9px; color:#999; letter-spacing:.04em; margin-bottom:8px; }
+.library-item-actions { display:flex; gap:6px; margin-top:6px; }
+.library-item-actions .btn { flex:1; text-align:center; padding:5px 6px; font-size:9px; letter-spacing:.08em; }
+.library-preview-overlay { display:none; position:fixed; inset:0; z-index:400; background:rgba(255,255,255,.93); align-items:center; justify-content:center; padding:20px; }
+.library-preview-overlay.visible { display:flex; }
+.library-preview-dialog { position:relative; background:#fff; border:1px solid #222; width:min(920px,96vw); max-height:92vh; display:flex; flex-direction:column; box-shadow:4px 4px 0 rgba(0,0,0,.06); }
+.library-preview-dialog .close-x {
+  position:absolute; top:8px; right:8px; z-index:2;
+  font-family:Helvetica,Arial,sans-serif;
+  font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  padding:5px 12px;
+  border:1px solid #ddd; background:#fff; color:#555;
+  cursor:pointer; line-height:1.2;
+  transition:background .12s,color .12s,border-color .12s;
+}
+.library-preview-dialog .close-x:hover { background:#222; color:#fff; border-color:#222; }
+.library-preview-dialog h3 { font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:14px 88px 10px 14px; margin:0; border-bottom:1px solid #eee; color:#222; }
+.library-preview-canvas-wrap { flex:1; min-height:280px; max-height:min(72vh,640px); overflow:auto; display:flex; align-items:center; justify-content:center; background:#fafafa; padding:16px; }
+#library-preview-canvas { display:block; background:#fff; box-shadow:0 0 0 1px #e8e8e8; }
+.library-preview-actions { padding:12px 14px; border-top:1px solid #eee; display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+.library-preview-actions .hint { font-size:9px; color:#999; letter-spacing:.04em; flex:1; align-self:center; min-width:120px; }
+.library-empty { font-size:10px; color:#bbb; padding:12px; text-align:center; line-height:1.5; margin:0; }
+#main-canvas { display:block; position:absolute; top:0; left:0; cursor:default; }
+#main-canvas.dragging { cursor:grabbing; }
+#view-3d { position:absolute; top:0; left:0; right:0; bottom:0; display:none; background:#fff; overflow:hidden; }
+#view-3d.active { display:block; }
+#view-3d canvas { display:block; width:100%; height:100%; }
+#view-angles { display:none; position:absolute; bottom:16px; left:50%; transform:translateX(-50%); z-index:10; gap:0; background:#fff; border:1px solid #ddd; }
+#view-angles.visible { display:flex; }
+#view-angles button { font-family:Helvetica,Arial,sans-serif; font-size:10px; letter-spacing:.08em; text-transform:uppercase; padding:5px 12px; border:none; border-right:1px solid #ddd; background:#fff; color:#555; cursor:pointer; transition:background .15s,color .15s; }
+#view-angles button:last-child { border-right:none; }
+#view-angles button:hover, #view-angles button.active { background:#222; color:#fff; }
+#pip-canvas { position:absolute; bottom:12px; left:12px; width:140px; height:105px; border:1px solid rgba(0,0,0,.12); z-index:10; display:none; pointer-events:none; }
+#view-3d.active #pip-canvas { display:block; }
+
+/* ── Alphabet panel ── */
+#alphabet-panel { display:none; flex-shrink:0; padding:8px 24px 10px; border-bottom:1px solid #e8e8e8; background:#fff; flex-wrap:wrap; gap:4px; align-items:center; justify-content:center; }
+#alphabet-panel.visible { display:flex; }
+#alphabet-panel #alphabet-letters { display:flex; flex-wrap:wrap; gap:4px; }
+#alphabet-panel .letter-btn { width:26px; height:26px; border:1px solid #e0e0e0; background:#fff; color:#555; font-size:10px; font-weight:600; letter-spacing:.06em; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s,color .12s,border-color .12s; }
+#alphabet-panel .letter-btn:hover, #alphabet-panel .letter-btn.active { background:#222; color:#fff; border-color:#222; }
+
+/* ── Statusbar ── */
+#statusbar { height:32px; border-top:1px solid #e8e8e8; display:flex; align-items:center; padding:0 20px; justify-content:space-between; flex-shrink:0; }
+#statusbar .left { font-size:10px; letter-spacing:.1em; color:#bbb; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+#statusbar .left span { color:#444; }
+#statusbar .right { font-size:10px; letter-spacing:.08em; color:#bbb; text-transform:uppercase; }
+#phase-dot { width:5px; height:5px; border-radius:50%; background:#ddd; display:inline-block; transition:background .3s; flex-shrink:0; }
+#phase-dot.active { background:#222; }
+#phase-dot.dissolving { background:#bbb; animation:pulse .8s ease-in-out infinite alternate; }
+@keyframes pulse { from{opacity:.4} to{opacity:1} }
+
+/* ── Info panel ── */
+#info-overlay { display:none; position:fixed; inset:0; z-index:500; background:rgba(255,255,255,.9); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); align-items:center; justify-content:center; }
+#info-overlay.visible { display:flex; }
+#info-panel { background:#fff; border:1px solid #222; width:540px; max-width:90vw; max-height:82vh; overflow-y:auto; padding:36px 40px 32px; position:relative; }
+#info-panel .close-x { position:absolute; top:14px; right:16px; font-size:15px; color:#bbb; cursor:pointer; background:none; border:none; line-height:1; padding:4px; }
+#info-panel .close-x:hover { color:#222; }
+#info-panel h2 { font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:#222; margin-bottom:24px; font-weight:700; }
+#info-panel h3 { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:#bbb; margin:22px 0 8px; font-weight:600; }
+#info-panel .info-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #f2f2f2; gap:16px; }
+#info-panel .info-row:last-of-type { border-bottom:none; }
+#info-panel .info-key { display:flex; gap:4px; align-items:center; flex-shrink:0; }
+#info-panel kbd { font-family:Helvetica,Arial,sans-serif; font-size:9px; letter-spacing:.05em; background:#f7f7f7; border:1px solid #e0e0e0; padding:2px 7px; color:#333; white-space:nowrap; line-height:1.5; }
+#info-panel .info-desc { font-size:10px; letter-spacing:.05em; color:#888; text-align:right; }
+#info-panel .info-note { font-size:9px; letter-spacing:.05em; color:#ccc; margin-top:20px; line-height:1.6; }
+.btn-info { font-family:Helvetica,Arial,sans-serif; font-size:10px; font-weight:700; width:22px; height:22px; border:1px solid #ddd; background:#fff; color:#bbb; cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:all .12s; padding:0; flex-shrink:0; }
+.btn-info:hover { border-color:#222; color:#222; }
+
+/* ── 3D annotation card ── */
+.label-3d-card { background:#fff; border:1px solid #222; padding:7px 11px 8px; white-space:nowrap; opacity:0; transition:opacity .18s; font-family:Helvetica,Arial,sans-serif; }
+.label-3d-card.visible { opacity:1; }
+.l3d-meta { font-size:8px; letter-spacing:.16em; color:#bbb; text-transform:uppercase; margin-bottom:3px; }
+.l3d-role { font-size:11px; letter-spacing:.08em; color:#111; font-weight:700; text-transform:uppercase; line-height:1; margin-bottom:2px; }
+.l3d-desc { font-size:8px; letter-spacing:.1em; color:#aaa; text-transform:uppercase; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.js"></script>
+<!-- brick-config.js: committed defaults for deploy; replace with real URL/key on your host if needed -->
+<script src="brick-config.js"></script>
+<!-- Optional override (gitignored): copy brick-config.local.example.js → brick-config.local.js -->
+<script src="brick-config.local.js"></script>
+<script>
+(function(){
+  var d=window.BRICK_SUPABASE||{};
+  window.BRICK_SUPABASE={
+    url: d.url||'https://YOUR_PROJECT_REF.supabase.co',
+    anonKey: d.anonKey||'YOUR_SUPABASE_ANON_KEY'
+  };
+})();
+</script>
+</head>
+<body>
+<div id="topbar">
+  <div class="meta">
+    <span id="label-a">—</span>
+    <span class="sep">·</span>
+    <button type="button" id="label-c" class="meta-link" aria-live="polite">—</button>
+    <span class="sep">·</span>
+    <span id="label-count">—</span>
+  </div>
+  <div class="actions">
+    <!-- Content mode group -->
+    <div class="btn-group">
+      <button class="btn" id="btn-random">Random</button>
+      <button class="btn" id="btn-letters">Alphabet</button>
+      <button class="btn" id="btn-type">Type</button>
+      <button class="btn" id="btn-imported" type="button" title="Blank 2D canvas — import from Library or add bricks">Imported</button>
+  </div>
+    <div class="divider"></div>
+    <!-- View group -->
+    <div class="btn-group">
+      <button class="btn primary" id="btn-view-2d">2D</button>
+      <button class="btn" id="btn-view-3d">3D</button>
+</div>
+    <button class="btn" id="btn-3d-mode" style="display:none" title="Switch between flat (2D-matched) and stack (layered) 3D layout">Flat</button>
+    <button class="btn" id="btn-auto-rotate" style="display:none">Auto</button>
+    <div class="divider"></div>
+    <!-- Actions group -->
+    <button class="btn" id="btn-style">Line</button>
+    <div class="menu-wrap" id="add-brick-wrap">
+      <button class="btn" id="btn-add-brick" title="Choose brick spec then add">Add Brick</button>
+      <div class="menu-pop" id="add-brick-menu"></div>
+    </div>
+    <button class="btn" id="btn-group">Group</button>
+    <button class="btn" id="btn-ungroup">Ungroup</button>
+    <div class="menu-wrap" id="more-wrap">
+      <button class="btn" id="btn-more">More</button>
+      <div class="menu-pop" id="more-menu">
+        <button class="btn" id="btn-rotate-sel">Rotate Sel</button>
+        <button class="btn" id="btn-select-mode">Sel: Contain</button>
+      </div>
+    </div>
+    <button class="btn" id="btn-undo" disabled>Undo</button>
+    <button class="btn" id="btn-reset" disabled>Reset</button>
+    <button class="btn" id="btn-next">Next</button>
+    <button class="btn" id="btn-save">Save</button>
+    <button class="btn" id="btn-share-submit" type="button" disabled title="Configure brick-config.local.js">Share</button>
+    <button class="btn" id="btn-library-toggle" type="button" title="Show or hide Library" aria-expanded="false" aria-controls="library-panel">Library</button>
+    <button type="button" class="btn-info" id="btn-info" title="Help &amp; shortcuts (?)" aria-label="Help">?</button>
+  </div>
+</div>
+<div id="alphabet-panel">
+  <div id="alphabet-letters"></div>
+</div>
+<div id="main-work">
+<div id="canvas-wrap">
+  <canvas id="main-canvas"></canvas>
+  <div id="view-3d">
+    <canvas id="pip-canvas" width="280" height="210"></canvas>
+    <div id="view-angles">
+      <button data-angle="front">Front</button>
+      <button data-angle="side">Side</button>
+      <button data-angle="top">Top</button>
+      <button data-angle="iso">Iso</button>
+</div>
+  </div>
+  <div id="brick-ctx-menu">
+    <button id="ctx-rotate">Rotate</button>
+    <button id="ctx-customize">Customize</button>
+  </div>
+  <div id="type-bar">
+    <input type="text" id="type-input" placeholder="TYPE HERE">
+    <div id="type-size-wrap">
+      <span class="k">Size</span>
+      <input type="range" id="type-size" min="0.15" max="2.2" step="0.01" value="1">
+      <span class="v" id="type-size-v">100%</span>
+    </div>
+    <button type="button" class="btn btn-fit" id="type-fit" title="Auto-fit word width to viewport">Fit</button>
+    <span class="hint">Enter ↵</span>
+  </div>
+  <div id="custom-panel">
+    <button class="close-x" id="panel-close">✕</button>
+    <h3>Customize Brick</h3>
+    <div class="panel-section">
+      <label>Block shape</label>
+      <p class="panel-microhint">Normal brick look or extra 3D / distortion (hover a button for detail).</p>
+      <div class="pill-group" id="tx-pills"></div>
+    </div>
+    <div class="panel-section">
+      <label>Fill pattern</label>
+      <p class="panel-microhint">How lines, dots, or texture cover the brick face.</p>
+      <div class="pill-group" id="method-pills"></div>
+    </div>
+    <div class="panel-section" id="param-controls">
+      <label>Parameters</label>
+      <div class="ctrl-row" id="row-stroke"><span class="k">Stroke</span><input id="ctl-stroke" type="range" min="0.6" max="3.2" step="0.1"><span class="v" id="ctl-stroke-v">1.5</span></div>
+      <div class="ctrl-row" id="row-gap"><span class="k">Gap</span><input id="ctl-gap" type="range" min="2" max="14" step="0.5"><span class="v" id="ctl-gap-v">5.0</span></div>
+      <div class="ctrl-row" id="row-angle"><span class="k">Angle</span><input id="ctl-angle" type="range" min="-135" max="135" step="1"><span class="v" id="ctl-angle-v">-45°</span></div>
+      <div class="ctrl-row" id="row-melt"><span class="k">Melt</span><input id="ctl-melt" type="range" min="0.1" max="1.2" step="0.02"><span class="v" id="ctl-melt-v">0.50</span></div>
+      <div class="ctrl-row" id="row-drift"><span class="k">Drift</span><input id="ctl-drift" type="range" min="0.1" max="2.0" step="0.02"><span class="v" id="ctl-drift-v">1.00</span></div>
+      <div class="ctrl-row" id="row-stretchx"><span class="k">Stretch X</span><input id="ctl-stretchx" type="range" min="0.4" max="2.2" step="0.02"><span class="v" id="ctl-stretchx-v">1.00</span></div>
+      <div class="ctrl-row" id="row-stretchy"><span class="k">Stretch Y</span><input id="ctl-stretchy" type="range" min="0.4" max="2.2" step="0.02"><span class="v" id="ctl-stretchy-v">1.00</span></div>
+      <div class="ctrl-row" id="row-dotsize"><span class="k">Dot Size</span><input id="ctl-dotsize" type="range" min="0.5" max="6" step="0.1"><span class="v" id="ctl-dotsize-v">2.0</span></div>
+      <div class="ctrl-row" id="row-dotgap"><span class="k">Dot Gap</span><input id="ctl-dotgap" type="range" min="2" max="14" step="0.5"><span class="v" id="ctl-dotgap-v">5.0</span></div>
+      <div class="ctrl-row" id="row-density"><span class="k">Density</span><input id="ctl-density" type="range" min="0.02" max="0.3" step="0.01"><span class="v" id="ctl-density-v">0.12</span></div>
+      <div class="ctrl-row" id="row-pixelsize"><span class="k">Pixel Size</span><input id="ctl-pixelsize" type="range" min="1" max="10" step="0.2"><span class="v" id="ctl-pixelsize-v">4.0</span></div>
+      <div class="ctrl-row" id="row-rays"><span class="k">Rays</span><input id="ctl-rays" type="range" min="8" max="96" step="1"><span class="v" id="ctl-rays-v">36</span></div>
+      <div class="ctrl-row" id="row-waveamp"><span class="k">Wave Amp</span><input id="ctl-waveamp" type="range" min="0.5" max="10" step="0.2"><span class="v" id="ctl-waveamp-v">3.0</span></div>
+      <div class="ctrl-row" id="row-wavefreq"><span class="k">Wave Freq</span><input id="ctl-wavefreq" type="range" min="0.01" max="0.2" step="0.005"><span class="v" id="ctl-wavefreq-v">0.08</span></div>
+      <div class="ctrl-row" id="row-noisescale"><span class="k">Noise</span><input id="ctl-noisescale" type="range" min="0.005" max="0.15" step="0.002"><span class="v" id="ctl-noisescale-v">0.04</span></div>
+      <div class="ctrl-row color"><span class="k">Color</span><input id="ctl-color" type="color" value="#141414"></div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn" id="panel-random">Random</button>
+      <button class="btn" id="panel-clear">Clear</button>
+      <button class="btn primary" id="panel-apply">Done</button>
+    </div>
+  </div>
+</div>
+</div>
+<aside id="library-panel" aria-label="Shared layouts library" aria-hidden="true">
+  <div class="library-head">
+    <h3>Library</h3>
+    <button type="button" class="btn" id="library-refresh">Refresh</button>
+  </div>
+  <p id="library-status" class="library-status"></p>
+  <div id="library-list" class="library-list"></div>
+  <p id="library-empty" class="library-empty">No shared layouts yet. Use Share to add one.</p>
+</aside>
+<div id="library-preview-overlay" class="library-preview-overlay" aria-hidden="true">
+  <div class="library-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="library-preview-title">
+    <button type="button" class="close-x" id="library-preview-close">Close</button>
+    <h3 id="library-preview-title">Shared layout</h3>
+    <div class="library-preview-canvas-wrap">
+      <canvas id="library-preview-canvas" width="640" height="480"></canvas>
+    </div>
+    <div class="library-preview-actions">
+      <span class="hint">Preview only — main canvas unchanged</span>
+      <button type="button" class="btn" id="library-preview-import">Import to main canvas</button>
+    </div>
+  </div>
+</div>
+<div id="info-overlay">
+  <div id="info-panel">
+    <button class="close-x" id="info-close">✕</button>
+    <h2>Brick System</h2>
+    <h3>Modes</h3>
+    <div class="info-row"><span class="info-key"><kbd>Random</kbd></span><span class="info-desc">Random brick compositions</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Alphabet</kbd></span><span class="info-desc">Browse A–Z letters built from bricks · click the perspective name in the top bar (e.g. Front View) to cycle Side / Top / Isometric / …</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Type</kbd></span><span class="info-desc">Type a word and build it from bricks</span></div>
+    <h3>Navigation</h3>
+    <div class="info-row"><span class="info-key"><kbd>Space</kbd></span><span class="info-desc">Next composition / re-render</span></div>
+    <div class="info-row"><span class="info-key"><kbd>←</kbd> <kbd>→</kbd></span><span class="info-desc">Previous / next letter (Alphabet mode)</span></div>
+    <div class="info-row"><span class="info-key"><kbd>A</kbd>–<kbd>Z</kbd></span><span class="info-desc">Jump to letter (Alphabet mode)</span></div>
+    <div class="info-row"><span class="info-key"><kbd>T</kbd></span><span class="info-desc">Open Type input</span></div>
+    <h3>Editing</h3>
+    <div class="info-row"><span class="info-key">Drag</span><span class="info-desc">Move a brick (snap to stack)</span></div>
+    <div class="info-row"><span class="info-key">Double-click</span><span class="info-desc">Rotate brick</span></div>
+    <div class="info-row"><span class="info-key">Right-click</span><span class="info-desc">Rotate or customize brick style</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd></span><span class="info-desc">Undo</span></div>
+    <h3>Display</h3>
+    <div class="info-row"><span class="info-key"><kbd>Style</kbd> button</span><span class="info-desc">Cycle: Line → Dash → Hatch → preset styles</span></div>
+    <div class="info-row"><span class="info-key"><kbd>2D</kbd> / <kbd>3D</kbd></span><span class="info-desc">Switch view mode</span></div>
+    <div class="info-row"><span class="info-key"><kbd>S</kbd></span><span class="info-desc">Save as PNG</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Share</kbd></span><span class="info-desc">Submit layout to Supabase gallery (when configured)</span></div>
+    <h3>Shared gallery (Supabase)</h3>
+    <div class="info-row"><span class="info-key">Setup</span><span class="info-desc">Run <kbd>supabase-schema.sql</kbd> · set <kbd>brick-config.js</kbd> on your host (or use gitignored <kbd>brick-config.local.js</kbd> locally)</span></div>
+    <div class="info-row"><span class="info-key">Library</span><span class="info-desc"><kbd>View</kbd> = 2D preview · <kbd>Import</kbd> loads bricks into Imported mode (not Random / Alphabet / Type); saved composition name · perspective appears in the top bar when present</span></div>
+    <h3>3D Mode</h3>
+    <div class="info-row"><span class="info-key">Drag</span><span class="info-desc">Orbit camera</span></div>
+    <div class="info-row"><span class="info-key">Scroll</span><span class="info-desc">Zoom in / out</span></div>
+    <div class="info-row"><span class="info-key">Click brick</span><span class="info-desc">Highlight + zoom to inspect</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Front</kbd> <kbd>Side</kbd> <kbd>Top</kbd> <kbd>Iso</kbd></span><span class="info-desc">Camera angle presets</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Auto</kbd></span><span class="info-desc">Toggle auto-rotation</span></div>
+    <div class="info-row"><span class="info-key"><kbd>Flat</kbd> / <kbd>Stack</kbd></span><span class="info-desc">Flat = 1:1 from 2D · Stack = layered exploded view</span></div>
+    <p class="info-note">Press <kbd>?</kbd> or <kbd>Esc</kbd> to close this panel.</p>
+  </div>
+</div>
+<div id="statusbar">
+  <div class="left"><span id="phase-dot"></span><span id="status-text">ready</span></div>
+  <div class="right" style="display:flex;align-items:center;gap:10px;">
+    <span id="status-hint" style="color:#888;">drag · dbl-click=rotate · right-click=more</span>
+  </div>
+</div>
+<script>
+// ── Canvas setup ──
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('canvas-wrap');
+let _wordSizingActive=false,_wordSizingText='';
+let typeWordScale=1;
+function updateTypeSizeUi(){
+  const slider=document.getElementById('type-size');
+  const label=document.getElementById('type-size-v');
+  if(slider) slider.value=String(typeWordScale);
+  if(label) label.textContent=Math.round(typeWordScale*100)+'%';
+}
+function getWordMetrics(scale){
+  const s=Math.max(0.15,Math.min(2.2,scale||1));
+  const cols=4,rows=5;
+  // Keep base construction grid fixed; visual size slider applies as a uniform layout scale.
+  const stepX=BW,stepY=BSTK;
+  return{
+    scale:s,cols,rows,
+    stepX,stepY,
+    letterW:cols*stepX,
+    letterH:rows*stepY,
+    gapX:BW
+  };
+}
+function wordSingleLineWidth(word){
+  const w=(word||'').trim().toUpperCase().replace(/[^A-Z]/g,'');
+  if(!w.length) return 0;
+  const {letterW,gapX}=getWordMetrics(1);
+  return w.length*letterW+Math.max(0,w.length-1)*gapX;
+}
+function requiredCanvasWidth(viewportW){
+  if(_wordSizingActive&&_wordSizingText){
+    const pad=BW*2;
+    return Math.max(viewportW,wordSingleLineWidth(_wordSizingText)+pad*2);
+  }
+  return viewportW;
+}
+function resizeCanvas() {
+  const main=document.getElementById('main-work');
+  const viewportW=main?main.clientWidth:wrap.clientWidth;
+  const targetW=Math.max(viewportW,requiredCanvasWidth(viewportW));
+  const targetH=wrap.clientHeight;
+  wrap.style.minWidth=targetW+'px';
+  canvas.width=targetW; canvas.height=targetH;
+  canvas.style.width=targetW+'px'; canvas.style.height=targetH+'px';
+  queueMicrotask(()=>updateMainWorkScrollChrome());
+}
+function applyWordCanvasScale(){
+  const s=(currentComp&&currentComp.name==='Word')?Math.max(0.15,Math.min(2.2,typeWordScale||1)):1;
+  canvas.style.transformOrigin=(currentComp&&currentComp.name==='Word')?'0% 50%':'50% 50%';
+  canvas.style.transform=(Math.abs(s-1)>1e-6)?`scale(${s})`:'none';
+}
+resizeCanvas();
+window.addEventListener('resize', ()=>{ resizeCanvas(); if(phase==='holding') renderFrame(); syncLibraryPanelLayout(); if(viewMode==='3d')syncView3dDock(); });
+
+// ── Brick constants ──
+const U=28, BW=U*4, BH=U*1.2, SW=U*0.56, SH=U*0.35, BR=U*0.06, SR=U*0.04;
+const BRICK_UNITS=[1,2,3,4];
+const BRICK_DEPTHS=[1,2];
+const BRICK_ADD_SPECS=[
+  {id:'random',label:'Random',size:null,depth:null},
+  {id:'1x1',label:'1x1',size:1,depth:1},
+  {id:'1x2',label:'1x2',size:2,depth:1},
+  {id:'1x3',label:'1x3',size:3,depth:1},
+  {id:'1x4',label:'1x4',size:4,depth:1},
+  {id:'2x2',label:'2x2',size:2,depth:2},
+  {id:'2x3',label:'2x3',size:3,depth:2},
+  {id:'2x4',label:'2x4',size:4,depth:2},
+];
+const BSTK=BH+SH, SNAP_RADIUS=BH*1.2;
+// Row-normalize / integer ty can drift a few px from ideal BSTK spacing; keep stack logic tolerant.
+const STUD_STACK_Y_TOL=Math.max(8,BSTK*0.14);
+const COVERED_STUD_Y_TOL=Math.max(10,BSTK*0.22);
+
+// ── sketch4 base unit ──
+const BASE_U = 16;
+
+// ── All transforms + methods (id = stored in customStyle; label = panel UI) ──
+const TRANSFORM_OPTIONS=[
+  { id:'Front',      label:'Standard front', title:'Normal flat brick — one face, four studs.'},
+  { id:'Isometric',  label:'Three faces',    title:'Mini 3D: top + front + side (isometric block).'},
+  { id:'Stretch',    label:'Stretch',      title:'Widen or squash the brick body.'},
+  { id:'Melt',       label:'Melt',         title:'Soft, rounded silhouette.'},
+  { id:'Explode',    label:'Explode',      title:'Studs pushed away from the body.'},
+  { id:'Shadow',     label:'+ Shadow',     title:'Same brick with a drop shadow on the “ground”.'},
+  { id:'Unfold',     label:'Unfold',       title:'Studs splay outward like hinges.'},
+];
+const METHOD_OPTIONS=[
+  { id:'Concentric',  label:'Rings',         title:'Concentric oval / ring lines.'},
+  { id:'Dots',        label:'Dots',          title:'Regular grid of dots.'},
+  { id:'H-Lines',     label:'H stripes',     title:'Horizontal line fill.'},
+  { id:'Diagonal',    label:'Diagonal',      title:'Slanted line fill.'},
+  { id:'Cross-Hatch', label:'Cross hatch',   title:'Two diagonal directions crossed.'},
+  { id:'Stipple',     label:'Fine stipple',  title:'Dense tiny dots / speckle.'},
+  { id:'Pixel Grid',  label:'Pixel blocks',  title:'Chunky pixel mosaic.'},
+  { id:'Radial',      label:'Sunburst',      title:'Straight rays from a center point.'},
+  { id:'Wave',        label:'Waves',         title:'Wavy flowing lines.'},
+  { id:'Noise',       label:'Grain',         title:'Soft random noise texture.'},
+];
+const ALL_TX =TRANSFORM_OPTIONS.map(o=>o.id);
+const ALL_MTH=METHOD_OPTIONS.map(o=>o.id);
+
+// ── Style presets ──
+const STYLE_PRESETS = [
+  { label:'Line',        mode:'builtin', builtin:'outline' },
+  { label:'Dash',        mode:'builtin', builtin:'dashed'  },
+  { label:'Hatch',       mode:'builtin', builtin:'hatch'   },
+  { label:'Concentric',  mode:'preset',  tx:'Front',      method:'Concentric' },
+  { label:'Iso Mix',     mode:'preset',  tx:'Isometric',  method:'random'     },
+  { label:'Shadow',      mode:'preset',  tx:'Shadow',     method:'H-Lines'    },
+  { label:'Melt',        mode:'preset',  tx:'Melt',       method:'Stipple'    },
+  { label:'Random', mode:'random'                                         },
+];
+let styleIndex = 0;
+let brickStyle = 'outline';
+
+// ── Alphabet ──
+const ALPHABET = {
+  A:[[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+  B:[[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,1,1,0]],
+  C:[[1,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
+  D:[[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
+  E:[[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]],
+  F:[[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+  G:[[1,1,1,1],[1,0,0,0],[1,0,1,1],[1,0,0,1],[1,1,1,1]],
+  H:[[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+  I:[[1,1,1,1],[0,1,1,0],[0,1,1,0],[0,1,1,0],[1,1,1,1]],
+  J:[[0,1,1,1],[0,0,0,1],[0,0,0,1],[1,0,0,1],[1,1,1,0]],
+  K:[[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
+  L:[[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
+  M:[[1,0,0,1],[1,1,1,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+  N:[[1,0,0,1],[1,1,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1]],
+  O:[[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1]],
+  P:[[1,1,1,1],[1,0,0,1],[1,1,1,1],[1,0,0,0],[1,0,0,0]],
+  Q:[[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,1,1],[1,1,1,1]],
+  R:[[1,1,1,1],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
+  S:[[1,1,1,1],[1,0,0,0],[1,1,1,1],[0,0,0,1],[1,1,1,1]],
+  T:[[1,1,1,1],[0,1,1,0],[0,1,1,0],[0,1,1,0],[0,1,1,0]],
+  U:[[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1]],
+  V:[[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1],[0,1,1,0]],
+  W:[[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,1,1,1]],
+  X:[[1,0,0,1],[0,1,1,0],[0,1,1,0],[0,1,1,0],[1,0,0,1]],
+  Y:[[1,0,0,1],[1,0,0,1],[1,1,1,1],[0,1,1,0],[0,1,1,0]],
+  Z:[[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
+};
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+let currentLetterIndex = 0;
+
+// ── State ──
+let bricks=[], phase='idle', phaseTimer=0;
+let currentComp, currentPersp, resultCount=0, animId=null;
+let dragBrick=null, dragOffX=0, dragOffY=0, snapTarget=null, _lastSnap=null;
+let _dragOrigin=null;
+let savedOriginalLayout=null, undoStack=[], preDragSnapshot=null;
+let currentWord='';
+let typeMode=false, viewMode='2d';
+let _librarySourceSnapshot=null; // optional metadata from shared JSON for Share + labels (Imported mode)
+let layout3dMode='flat'; // 'flat' | 'stack'
+let _pendingView3dRestore=null; // applied next time user enters 3D (after Library import)
+let brickPosTweens=[]; // per-brick position animations
+let _snapPulse=0;
+let selectedBricks=new Set();
+let groupCounter=1;
+let marquee=null; // {x0,y0,x1,y1,active}
+let groupDrag=null; // {members:[{b,dx,dy}],anchor,start}
+let touchGesture=null; // {dist,ang,cx,cy,snap}
+let marqueeMode='contain'; // 'contain' | 'touch'
+
+// ════════════════════════════════════════════════════════════
+//  NOISE (Perlin — replaces p5.noise)
+// ════════════════════════════════════════════════════════════
+const _np = new Uint8Array(512);
+(function(){ const p=new Uint8Array(256); for(let i=0;i<256;i++) p[i]=i;
+  for(let i=255;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}
+  for(let i=0;i<512;i++) _np[i]=p[i&255]; })();
+function vNoise(x,y){
+  const X=Math.floor(x)&255, Y=Math.floor(y)&255;
+  const xf=x-Math.floor(x), yf=y-Math.floor(y);
+  const u=xf*xf*xf*(xf*(xf*6-15)+10), v=yf*yf*yf*(yf*(yf*6-15)+10);
+  function g(h,dx,dy){h&=3;return(h<2?dx:-dx)+(h===0||h===3?dy:-dy);}
+  const a=_np[X]+Y, b=_np[X+1]+Y;
+  const n00=g(_np[a],  xf,  yf),  n10=g(_np[b],  xf-1,yf);
+  const n01=g(_np[a+1],xf,  yf-1),n11=g(_np[b+1],xf-1,yf-1);
+  const nx0=n00+(n10-n00)*u, nx1=n01+(n11-n01)*u;
+  return (nx0+(nx1-nx0)*v)*0.5+0.5;
+}
+
+// ════════════════════════════════════════════════════════════
+//  SKETCH4 RENDERING (vanilla JS translation)
+// ════════════════════════════════════════════════════════════
+function rnd(a,b){return Math.random()*(b-a)+a;}
+function rndInt(a,b){return Math.floor(rnd(a,b));}
+function rndItem(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+function makeParams(){
+  return {
+    interval:  rnd(4,14),  lineGap:   rnd(2,9),
+    lineAngle: rnd(-Math.PI*.75,Math.PI*.75),
+    strokeWidth:rnd(1.0,2.2), ink:'#141414',
+    dotSize:   rnd(1,4),   dotGap:    rnd(3,9),
+    pixelSize: rnd(2,7),   waveAmp:   rnd(1,6),
+    waveFreq:  rnd(.03,.12), noiseScale:rnd(.02,.09),
+    radialRays:rndInt(12,72), studScale:rnd(.6,1.3),
+    melt:      rnd(.2,.9), drift:     rnd(.3,1.5),
+    stretchX:  rnd(.5,1.8), stretchY:  rnd(.5,1.8),
+    stippleDensity:rnd(.06,.18),
+  };
+}
+
+// ── SDF ──
+function sdBox4(px,py,cx,cy,hw,hh,r){
+  r=r||0; const qx=Math.abs(px-cx)-hw+r,qy=Math.abs(py-cy)-hh+r;
+  return Math.min(Math.max(qx,qy),0)+Math.sqrt(Math.max(qx,0)**2+Math.max(qy,0)**2)-r;
+}
+
+function getSDF4(px,py,bx,by,sc,p,vm,ex){
+  const u=BASE_U*sc,sh=p?p.studScale:1;
+  const bw=u*4,bh=u*1.2,sw=u*.56,esh=u*.35*sh;
+  if(vm==='melt'){
+    const mt=p?p.melt:.5,r=u*.06+mt*bh*.45;
+    let d=sdBox4(px,py,bx,by,bw/2,bh/2,r);
+    const sr=u*.04+mt*sw*.35,top=by-bh/2;
+    for(const sx of[bx-u*1.5,bx-u*.5,bx+u*.5,bx+u*1.5]) d=Math.min(d,sdBox4(px,py,sx,top-esh/2,sw/2,esh/2,sr));
+    return d;
+  }
+  if(vm==='explode'){
+    const dr=p?p.drift:1; let d=sdBox4(px,py,bx,by,bw/2,bh/2,u*.06);
+    const top=by-bh/2;
+    for(const sx of[bx-u*1.5,bx-u*.5,bx+u*.5,bx+u*1.5])
+      d=Math.min(d,sdBox4(px,py,sx+(sx-bx)*dr*.4,top-esh/2-bh*.25*dr,sw/2,esh/2,u*.04));
+    return d;
+  }
+  if(vm==='stretch'){
+    const sxf=ex?ex.stretchX:1,syf=ex?ex.stretchY:1;
+    let d=sdBox4(px,py,bx,by,bw*sxf/2,bh*syf/2,u*.06);
+    const top=by-bh*syf/2;
+    for(const sx of[bx-u*1.5*sxf,bx-u*.5*sxf,bx+u*.5*sxf,bx+u*1.5*sxf])
+      d=Math.min(d,sdBox4(px,py,sx,top-esh*syf/2,sw*sxf/2,esh*syf/2,u*.04));
+    return d;
+  }
+  if(vm==='shadow') return sdBox4(px,py,bx,by,bw/2,bh*.15,u*.06);
+  if(vm==='body_only') return sdBox4(px,py,bx,by,bw/2,bh/2,u*.06);
+  if(vm==='stud_only') return sdBox4(px,py,bx,by,sw/2,esh/2,u*.04);
+  if(vm==='side_shape'){
+    // Square side profile + one stud on top
+    let d=sdBox4(px,py,bx,by,bh/2,bh/2,u*.06);
+    d=Math.min(d,sdBox4(px,py,bx,by-bh/2-esh/2,sw/2,esh/2,u*.04));
+    return d;
+  }
+  if(vm==='top_shape'){
+    const hd=u*.5;
+    let d=sdBox4(px,py,bx,by,bw/2,hd,u*.06);
+    const spr=u*.04;
+    for(const sx of[bx-u*1.5,bx-u*.5,bx+u*.5,bx+u*1.5])
+      d=Math.min(d,sdBox4(px,py,sx,by,sw/2,sw/2,spr));
+    return d;
+  }
+  let d=sdBox4(px,py,bx,by,bw/2,bh/2,u*.06);
+  const top=by-bh/2;
+  for(const sx of[bx-u*1.5,bx-u*.5,bx+u*.5,bx+u*1.5])
+    d=Math.min(d,sdBox4(px,py,sx,top-esh/2,sw/2,esh/2,u*.04));
+  return d;
+}
+
+function getBounds4(bx,by,sc,p,vm,ex){
+  const u=BASE_U*sc,sh=p?p.studScale:1;
+  const bw=u*4,bh=u*1.2,sw=u*.56,esh=u*.35*sh,pad=2;
+  if(vm==='stretch'){const sxf=ex?ex.stretchX:1,syf=ex?ex.stretchY:1;
+    return{x0:bx-bw*sxf/2-sw-pad,x1:bx+bw*sxf/2+sw+pad,y0:by-bh*syf/2-esh-pad,y1:by+bh*syf/2+pad};}
+  if(vm==='shadow') return{x0:bx-bw/2-pad,x1:bx+bw/2+pad,y0:by-bh*.3-pad,y1:by+bh*.3+pad};
+  if(vm==='body_only') return{x0:bx-bw/2-pad,x1:bx+bw/2+pad,y0:by-bh/2-pad,y1:by+bh/2+pad};
+  if(vm==='stud_only') return{x0:bx-sw/2-pad,x1:bx+sw/2+pad,y0:by-esh/2-pad,y1:by+esh/2+pad};
+  if(vm==='side_shape') return{x0:bx-bh/2-pad,x1:bx+bh/2+pad,y0:by-bh/2-esh-pad,y1:by+bh/2+pad};
+  if(vm==='top_shape') return{x0:bx-bw/2-sw/2-pad,x1:bx+bw/2+sw/2+pad,y0:by-u*.5-sw/2-pad,y1:by+u*.5+sw/2+pad};
+  return{x0:bx-bw/2-sw/2-pad,x1:bx+bw/2+sw/2+pad,y0:by-bh/2-esh-pad,y1:by+bh/2+pad};
+}
+
+function applyMethod4(ctx2,x,y,bx,by,d,mn,sc,p){
+  const iv=p?p.interval:7, lg=p?p.lineGap:5, dg=p?p.dotGap:5,
+        ds=p?p.dotSize:2,  ps=p?p.pixelSize:4, wa=p?p.waveAmp:3,
+        wf=p?p.waveFreq:.08, ns=p?p.noiseScale:.04;
+  const sw=Math.max(.6,Math.min(3.2,p&&p.strokeWidth?p.strokeWidth:1.5));
+  const ink=(p&&p.ink)?p.ink:'#141414';
+  ctx2.fillStyle=ink;
+  switch(mn){
+    case'Concentric':
+      if((Math.abs(d)%iv)<sw) ctx2.fillRect(x,y,1,1); break;
+    case'H-Lines':
+      if(y%Math.max(2,lg)<sw) ctx2.fillRect(x,y,1,1); break;
+    case'Diagonal':{
+      const a=p?p.lineAngle:-Math.PI/4,pr=x*Math.cos(a)+y*Math.sin(a);
+      if(Math.abs(pr%Math.max(2,lg))<sw) ctx2.fillRect(x,y,1,1); break;}
+    case'Cross-Hatch':{
+      const a=p?p.lineAngle:-Math.PI/4,pr=x*Math.cos(a)+y*Math.sin(a);
+      if(y%Math.max(2,lg)<sw||Math.abs(pr%Math.max(2,lg))<sw) ctx2.fillRect(x,y,1,1); break;}
+    case'Dots':
+      if(x%Math.max(2,dg)<1.5&&y%Math.max(2,dg)<1.5){
+        ctx2.beginPath();ctx2.arc(x,y,ds/2,0,Math.PI*2);ctx2.fill();} break;
+    case'Stipple':
+      {
+        // Deterministic stipple so redraws are stable but still visibly dense.
+        const h=Math.sin((x+bx*1.37)*12.9898+(y+by*1.91)*78.233)*43758.5453;
+        const n=h-Math.floor(h);
+        const den=(p&&p.stippleDensity)?p.stippleDensity:.12;
+        if(n<den){
+          const r2=Math.max(.5,ds*(1-Math.abs(d)/10));
+          ctx2.beginPath();ctx2.arc(x,y,r2/2,0,Math.PI*2);ctx2.fill();
+        }
+      } break;
+    case'Pixel Grid':{
+      const psi=Math.max(2,Math.floor(ps));
+      if(x%psi<1&&y%psi<1){
+        const g=Math.round(20+(Math.abs(d)/(20*sc))*180);
+        ctx2.fillStyle=`rgb(${g},${g},${g})`;ctx2.fillRect(x,y,psi-1,psi-1);} break;}
+    case'Radial':{
+      const ang=Math.atan2(y-by,x-bx),rays=p?p.radialRays:36,sl=Math.PI*2/rays;
+      if(Math.abs(ang%sl)<.08) ctx2.fillRect(x,y,1,1); break;}
+    case'Wave':{
+      const wy=y+Math.sin(x*wf)*wa;
+      if(Math.abs(wy%Math.max(2,lg))<sw) ctx2.fillRect(x,y,1,1); break;}
+    case'Noise':{
+      const v=vNoise(x*ns,y*ns),g=Math.round(20+v*200);
+      ctx2.fillStyle=`rgb(${g},${g},${g})`;ctx2.fillRect(x,y,1,1); break;}
+    default:
+      if((Math.abs(d)%iv)<sw) ctx2.fillRect(x,y,1,1);
+  }
+}
+
+function drawCustom2D(ctx2,bx,by,sc,mn,p,vm,ex,shapeView){
+  // shapeView overrides the SDF shape when brick is rotated/side/top
+  // but vm still controls the transform effect (melt/explode etc.)
+  const sdfVm = (vm==='body_only'||vm==='stud_only'||vm==='shadow')?vm:
+    (shapeView==='side'||shapeView==='side_front')?'side_shape':
+    (shapeView==='top'||shapeView==='top_flat')?'top_shape':vm;
+  const bd=getBounds4(bx,by,sc,p,sdfVm,ex);
+  for(let y=Math.floor(bd.y0);y<=bd.y1;y++){
+    for(let x=Math.floor(bd.x0);x<=bd.x1;x++){
+      const d=getSDF4(x,y,bx,by,sc,p,sdfVm,ex);
+      if(d>0) continue;
+      applyMethod4(ctx2,x,y,bx,by,d,mn,sc,p);
+    }
+  }
+}
+
+// ── Iso face (scanline polygon fill) ──
+function isoFace(ctx2,ix,iy,bw,bh,face,mn,sc,p){
+  const ax=.866,ay=.5;
+  let pts;
+  if(face==='top'){
+    pts=[{x:ix,y:iy-bh/2},{x:ix+bw/2*ax,y:iy-bh/2+bw/2*ay},
+         {x:ix,y:iy-bh/2+bw*ay},{x:ix-bw/2*ax,y:iy-bh/2+bw/2*ay}];
+  } else if(face==='front'){
+    pts=[{x:ix-bw/2*ax,y:iy-bh/2-bw/2*ay},{x:ix+bw/2*ax,y:iy-bh/2+bw/2*ay},
+         {x:ix+bw/2*ax,y:iy+bh/2+bw/2*ay},{x:ix-bw/2*ax,y:iy+bh/2-bw/2*ay}];
+  } else {
+    pts=[{x:ix+bw/2*ax,y:iy-bh/2+bw/2*ay},{x:ix+bw/2*ax,y:iy-bh/2+bw/2*ay-bh*.4},
+         {x:ix+bw/2*ax,y:iy+bh/2+bw/2*ay-bh*.4},{x:ix+bw/2*ax,y:iy+bh/2+bw/2*ay}];
+  }
+  const shade=face==='top'?.15:face==='front'?.5:.82;
+  const iv=p?p.interval:7,gap=p?p.lineGap:5,sw=Math.max(.6,Math.min(3.2,p&&p.strokeWidth?p.strokeWidth:1.5));
+  const ink=(p&&p.ink)?p.ink:'#141414';
+  const xs=pts.map(q=>q.x),ys=pts.map(q=>q.y);
+  const x0=Math.floor(Math.min(...xs)),x1=Math.ceil(Math.max(...xs));
+  const y0=Math.floor(Math.min(...ys)),y1=Math.ceil(Math.max(...ys));
+  for(let y=y0;y<=y1;y++){
+    const ins=[];
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i],b=pts[(i+1)%pts.length];
+      if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y)){const t=(y-a.y)/(b.y-a.y);ins.push(a.x+t*(b.x-a.x));}
+    }
+    ins.sort((a,b)=>a-b);
+    for(let k=0;k+1<ins.length;k+=2){
+      const lx=ins[k],rx=ins[k+1];
+      for(let x=lx;x<=rx;x++){
+        const d=Math.min(x-lx,rx-x,y-y0,y1-y);
+        let draw=false;
+        if(face==='top') draw=(Math.abs(d)%iv)<sw;
+        else if(face==='front') draw=(y%Math.max(2,gap))<sw;
+        else draw=((x-lx)%Math.max(2,gap))<sw;
+        if(draw){const g=Math.round(20+shade*200);ctx2.fillStyle=`rgb(${g},${g},${g})`;ctx2.fillRect(x,y,1,1);}
+      }
+    }
+  }
+  ctx2.beginPath();ctx2.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx2.lineTo(pts[i].x,pts[i].y);
+  ctx2.closePath();ctx2.strokeStyle=ink;ctx2.lineWidth=Math.max(.5,sc*.6);ctx2.stroke();
+}
+
+function fillPoly(ctx2,pts,col,strokeCol){
+  const xs=pts.map(q=>q.x),ys=pts.map(q=>q.y);
+  const x0=Math.floor(Math.min(...xs)),x1=Math.ceil(Math.max(...xs));
+  const y0=Math.floor(Math.min(...ys)),y1=Math.ceil(Math.max(...ys));
+  for(let y=y0;y<=y1;y++){
+    const ins=[];
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i],b=pts[(i+1)%pts.length];
+      if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y)){const t=(y-a.y)/(b.y-a.y);ins.push(a.x+t*(b.x-a.x));}
+    }
+    ins.sort((a,b)=>a-b);
+    for(let k=0;k+1<ins.length;k+=2)
+      for(let x=ins[k];x<=ins[k+1];x++){ctx2.fillStyle=col;ctx2.fillRect(x,y,1,1);}
+  }
+  ctx2.beginPath();ctx2.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx2.lineTo(pts[i].x,pts[i].y);
+  ctx2.closePath();ctx2.strokeStyle=strokeCol||'#141414';ctx2.lineWidth=.8;ctx2.stroke();
+}
+
+// ── Main custom brick renderer ──
+function renderCustomBrick(ctx2,bx,by,cs,sc,view,rotated,size){
+  const {transform:tx,method:mn,params:p}=cs;
+  const u=BASE_U*sc;
+
+  // Compute actual physical dimensions matching the original brick renderer:
+  //   front: 4-stud wide (BW=u*4), BH tall, 4 studs
+  //   side/rotated: square (BH x BH), 1 stud
+  //   top: flat plate (shallow actualH) + studs in top_shape
+  const isSide = rotated || view==='side';
+  const isTop  = (!rotated) && view==='top';
+  const n = isSide ? 1 : (size||4);              // actual stud count
+  const actualW = isSide ? u*1.2 : u*n;          // matches original brickW(size)
+  const actualH = isTop  ? u*1.2*0.44 : u*1.2;
+  // stud offsets along plate length (front elevation on top edge; top/bird’s-eye on plate centerline)
+  const studXs  = isSide ? [0] : Array.from({length:n},(_,i)=>(-n/2+i+0.5)*u);
+  const sw=u*.56, sh=u*.35;
+
+  if(tx==='Isometric'){
+    const ax=.866,ay=.5;
+    const ink=(p&&p.ink)?p.ink:'#141414';
+    isoFace(ctx2,bx,by,actualW,actualH,'top',  mn,sc,p);
+    isoFace(ctx2,bx,by,actualW,actualH,'front',mn,sc,p);
+    isoFace(ctx2,bx,by,actualW,actualH,'right',mn,sc,p);
+    for(const sdx of studXs){
+      const stx=bx+sdx*ax, sty=by+sdx*ay-actualH*.5-sh*.5;
+      const spts=[{x:stx,y:sty-sh*.25},{x:stx+sw/2,y:sty},{x:stx,y:sty+sh*.25},{x:stx-sw/2,y:sty}];
+      fillPoly(ctx2,spts,ink,ink);
+    }
+    return;
+  }
+
+  // Helper: draw the brick shape (body+studs) using given SDF dims
+  // We override getSDF4/getBounds4 by passing a shape descriptor object
+  const dims={actualW,actualH,sw,sh,studXs,u};
+
+  if(tx==='Stretch'){drawCustom2DWithDims(ctx2,bx,by,mn,p,'stretch',dims,{stretchX:p.stretchX,stretchY:p.stretchY});return;}
+  if(tx==='Melt')   {dims._melt=p.melt;drawCustom2DWithDims(ctx2,bx,by,mn,p,'melt',   dims);return;}
+  if(tx==='Explode'){dims._drift=p.drift;drawCustom2DWithDims(ctx2,bx,by,mn,p,'explode',dims);return;}
+  if(tx==='Shadow') {drawCustom2DWithDims(ctx2,bx,by,mn,p,'shadow', dims);return;}
+  if(tx==='Unfold'){
+    const drift=p.drift;
+    const dirs=[{dx:-1,dy:0},{dx:0,dy:-1},{dx:1,dy:0},{dx:0,dy:1}];
+    drawCustom2DWithDims(ctx2,bx,by,mn,p,'body_only',dims);
+    studXs.forEach((sxi,i)=>{
+      const dir=dirs[i%4];
+      const ux=sxi+dir.dx*actualW*.35*drift, uy=by-actualH/2+dir.dy*actualH*.8*drift;
+      drawCustom2DWithDims(ctx2,ux,uy,mn,p,'stud_only',dims);
+    });
+    return;
+  }
+  const baseVm=view==='top'?'top_shape':'front';
+  drawCustom2DWithDims(ctx2,bx,by,mn,p,baseVm,dims);
+}
+
+// Dimension-aware 2D brick drawer — uses actual brick dims instead of hardcoded BASE_U*4
+function drawCustom2DWithDims(ctx2,bx,by,mn,p,vm,dims,ex){
+  const {actualW,actualH,sw,sh,studXs,u}=dims;
+  const pad=2;
+
+  // Compute bounds based on actual dims
+  let x0,x1,y0,y1;
+  if(vm==='shadow'){x0=bx-actualW/2-pad;x1=bx+actualW/2+pad;y0=by-actualH*.3-pad;y1=by+actualH*.3+pad;}
+  else if(vm==='body_only'){x0=bx-actualW/2-pad;x1=bx+actualW/2+pad;y0=by-actualH/2-pad;y1=by+actualH/2+pad;}
+  else if(vm==='stud_only'){x0=bx-sw/2-pad;x1=bx+sw/2+pad;y0=by-sh/2-pad;y1=by+sh/2+pad;}
+  else if(vm==='top_shape'){
+    const hd=u*.5;
+    x0=bx-actualW/2-sw/2-pad;x1=bx+actualW/2+sw/2+pad;y0=by-hd-sw/2-pad;y1=by+hd+sw/2+pad;
+  }
+  else if(vm==='stretch'){
+    const sx=ex?ex.stretchX:1,sy=ex?ex.stretchY:1;
+    x0=bx-actualW*sx/2-sw-pad;x1=bx+actualW*sx/2+sw+pad;y0=by-actualH*sy/2-sh-pad;y1=by+actualH*sy/2+pad;
+  }
+  else{x0=bx-actualW/2-sw/2-pad;x1=bx+actualW/2+sw/2+pad;y0=by-actualH/2-sh-pad;y1=by+actualH/2+pad;}
+
+  for(let y=Math.floor(y0);y<=y1;y++){
+    for(let x=Math.floor(x0);x<=x1;x++){
+      const d=sdfCustomDims(x,y,bx,by,vm,dims,ex);
+      if(d>0) continue;
+      applyMethod4(ctx2,x,y,bx,by,d,mn,1,p);
+    }
+  }
+}
+
+// SDF using actual brick dimensions
+function sdfCustomDims(px,py,bx,by,vm,dims,ex){
+  const {actualW,actualH,sw,sh,studXs,u}=dims;
+  const r=u*.06,sr=u*.04;
+
+  if(vm==='shadow') return sdBox4(px,py,bx,by,actualW/2,actualH*.15,r);
+  if(vm==='body_only') return sdBox4(px,py,bx,by,actualW/2,actualH/2,r);
+  if(vm==='stud_only') return sdBox4(px,py,bx,by,sw/2,sh/2,sr);
+
+  if(vm==='melt'){
+    const mt=dims._melt||.5,mr=r+mt*actualH*.45;
+    let d=sdBox4(px,py,bx,by,actualW/2,actualH/2,mr);
+    const top=by-actualH/2;
+    for(const sx of studXs) d=Math.min(d,sdBox4(px,py,sx===0?bx:bx+sx,top-sh/2,sw/2,sh/2,sr+mt*sw*.35));
+    return d;
+  }
+  if(vm==='explode'){
+    const dr=dims._drift||1;
+    let d=sdBox4(px,py,bx,by,actualW/2,actualH/2,r);
+    const top=by-actualH/2;
+    for(const sx of studXs){
+      const absx=sx===0?bx:bx+sx;
+      d=Math.min(d,sdBox4(px,py,absx+(absx-bx)*dr*.4,top-sh/2-actualH*.25*dr,sw/2,sh/2,sr));
+    }
+    return d;
+  }
+  if(vm==='stretch'){
+    const sxf=ex?ex.stretchX:1,syf=ex?ex.stretchY:1;
+    let d=sdBox4(px,py,bx,by,actualW*sxf/2,actualH*syf/2,r);
+    const top=by-actualH*syf/2;
+    for(const sx of studXs){
+      const absx=sx===0?bx:bx+sx*sxf;
+      d=Math.min(d,sdBox4(px,py,absx,top-sh*syf/2,sw*sxf/2,sh*syf/2,sr));
+    }
+    return d;
+  }
+  if(vm==='top_shape'){
+    const hd=u*.5;
+    let d=sdBox4(px,py,bx,by,actualW/2,hd,r);
+    for(const sx of studXs){
+      const absx=sx===0?bx:bx+sx;
+      d=Math.min(d,sdBox4(px,py,absx,by,sw/2,sw/2,sr));
+    }
+    return d;
+  }
+  // front / default: body + studs
+  let d=sdBox4(px,py,bx,by,actualW/2,actualH/2,r);
+  const top=by-actualH/2;
+  for(const sx of studXs){
+    const absx=sx===0?bx:bx+sx;
+    d=Math.min(d,sdBox4(px,py,absx,top-sh/2,sw/2,sh/2,sr));
+  }
+  return d;
+}
+
+// ════════════════════════════════════════════════════════════
+//  STYLE PRESET APPLY
+// ════════════════════════════════════════════════════════════
+function applyStylePreset(preset){
+  const WTXS=['Front','Isometric','Isometric','Isometric','Stretch','Melt','Explode','Shadow','Unfold'];
+  if(preset.mode==='builtin'){
+    brickStyle=preset.builtin;
+    for(const b of bricks) b.customStyle=null;
+  } else if(preset.mode==='preset'){
+    for(const b of bricks){
+      const p=makeParams();
+      b.customStyle={
+        transform:preset.tx,
+        method:preset.method==='random'?rndItem(ALL_MTH):preset.method,
+        params:{...p},
+      };
+    }
+  } else {
+    for(const b of bricks){
+      const p=makeParams();
+      b.customStyle={transform:rndItem(WTXS),method:rndItem(ALL_MTH),params:{...p}};
+    }
+  }
+  if(phase==='holding') renderFrame();
+}
+
+// ════════════════════════════════════════════════════════════
+//  CARD DECKS
+// ════════════════════════════════════════════════════════════
+const CARD_A=[
+  {name:'Single',       fn:comp01},    {name:'Side by Side', fn:comp02},
+  {name:'Tower',        fn:comp03},    {name:'Staircase',    fn:comp04},
+  {name:'Pyramid',      fn:comp05},    {name:'Cross',        fn:comp06},
+  {name:'Arch',         fn:comp07},    {name:'Letter C',     fn:comp08_C},
+  {name:'Letter U',     fn:comp09_U},  {name:'Letter H',     fn:comp10_H},
+  {name:'Alphabet',     fn:compLetter},{name:'Word',         fn:compWord},
+];
+const CARD_C=[
+  {name:'Front View',   proj:projFront},   {name:'Side View',    proj:projSide},
+  {name:'Top View',     proj:projTop},     {name:'Isometric',    proj:projIso},
+  {name:'Close-up',     proj:projCloseup}, {name:'Exploded View',proj:projExploded},
+];
+
+// ════════════════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ════════════════════════════════════════════════════════════
+function startLoop(){
+  if(animId) cancelAnimationFrame(animId);
+  function tick(){
+    phaseTimer++;
+    if(phase==='condensing'){
+      for(const b of bricks) updateBrick(b);
+      if(bricks.every(b=>b.t>=1)){
+        phase='holding';phaseTimer=0;
+        for(const b of bricks){b.x=b.tx;b.y=b.ty;b.interval=6;}
+        saveOriginalLayout();setStatus('holding');renderFrame();refreshShareSubmitUi();animId=null;return;
+      }
+    } else if(phase==='dissolving'){
+      for(const b of bricks) updateBrick(b);
+      if(phaseTimer>90){triggerNext();return;}
+    }
+    renderFrame();
+    animId=requestAnimationFrame(tick);
+  }
+  animId=requestAnimationFrame(tick);
+}
+
+// ════════════════════════════════════════════════════════════
+//  PHASE LOGIC
+// ════════════════════════════════════════════════════════════
+function triggerNext(){
+  resultCount++;
+  const pool=CARD_A.filter(c=>c.name!=='Alphabet'&&c.name!=='Word');
+  currentComp=rndItem(pool);currentPersp=rndItem(CARD_C);
+  applyCompAndStart();
+}
+
+function triggerAlphabetLetter(idx){
+  currentLetterIndex=(idx+26)%26;
+  currentComp=CARD_A.find(c=>c.name==='Alphabet');
+  if(!currentPersp) currentPersp=CARD_C.find(c=>c.name==='Front View')||CARD_C[0];
+  clearAnnotations();
+  applyCompAndStart();
+}
+
+function cycleAlphabetPerspective(){
+  if(!currentComp||currentComp.name!=='Alphabet'||phase!=='holding') return;
+  const nm=currentPersp&&currentPersp.name;
+  const ix=nm?CARD_C.findIndex(c=>c.name===nm):0;
+  const i=ix>=0?ix:0;
+  currentPersp=CARD_C[(i+1)%CARD_C.length];
+  clearAnnotations();
+  applyCompAndStart();
+}
+
+function refreshLabelCPerspectiveClickable(){
+  const lc=document.getElementById('label-c');
+  if(!lc) return;
+  const on=currentComp&&currentComp.name==='Alphabet'&&phase==='holding';
+  lc.classList.toggle('is-active',on);
+  if(on) lc.setAttribute('title','Cycle: Front → Side → Top → Isometric → Close-up → Exploded');
+  else lc.removeAttribute('title');
+}
+
+function applyCompAndStart(){
+  if(typeMode) exitTypeMode();
+  _wordSizingActive=!!(currentComp&&currentComp.name==='Word');
+  if(!_wordSizingActive) _wordSizingText='';
+  clearImportedLayoutModeUi();
+  closeCustomPanel();
+  clearSelection();
+  clearAnnotations();
+  resizeCanvas(); // ensure canvas dimensions are current before computing positions
+  const mw=document.getElementById('main-work'); if(mw) mw.scrollLeft=0;
+  const cx=canvas.width/2,cy=canvas.height/2;
+  const raw=currentComp.fn(cx,cy);
+  const targets=currentPersp.proj(raw,cx,cy);
+  const WTXS=['Front','Isometric','Isometric','Isometric','Stretch','Melt','Explode','Shadow','Unfold'];
+  const preset=STYLE_PRESETS[styleIndex];
+
+  bricks=targets.map(t=>{
+    const sx=randomEdge('x'),sy=randomEdge('y');
+    let cs=null;
+    if(preset.mode==='preset') cs={transform:preset.tx,method:preset.method==='random'?rndItem(ALL_MTH):preset.method,params:makeParams()};
+    else if(preset.mode==='random') cs={transform:rndItem(WTXS),method:rndItem(ALL_MTH),params:makeParams()};
+    return{x:sx,y:sy,sx,sy,tx:t.x,ty:t.y,view:t.view||'front',rotated:false,size:t.size||4,depth:t.depth||1,layer:0,t:0,interval:80,delay:Math.random()*.25,customStyle:cs};
+  });
+
+  const brickYs=[...new Set(bricks.map(b=>Math.round(b.ty)))].sort((a,b)=>b-a);
+  bricks.forEach(b=>{b.layer=brickYs.indexOf(Math.round(b.ty));});
+
+  phase='condensing';phaseTimer=0;setStatus('condensing');
+  document.getElementById('label-a').textContent=currentComp.name;
+  document.getElementById('label-c').textContent=currentPersp.name;
+  document.getElementById('label-count').textContent=
+    currentComp.name==='Alphabet'?(currentLetterIndex+1)+'/26 '+LETTERS[currentLetterIndex]:
+    currentComp.name==='Word'?currentWord:
+    '#'+String(resultCount).padStart(3,'0');
+
+  document.getElementById('btn-random').classList.toggle('active',currentComp.name!=='Alphabet'&&currentComp.name!=='Word');
+  document.getElementById('btn-letters').classList.toggle('active',currentComp.name==='Alphabet');
+  document.getElementById('btn-imported')?.classList.remove('active');
+  document.getElementById('alphabet-panel').classList.toggle('visible',currentComp.name==='Alphabet');
+  syncLibraryPanelLayout();
+  updateAlphabetPanelActive();
+  applyWordCanvasScale();
+  startLoop();
+}
+
+function initAlphabetPanel(){
+  const c=document.getElementById('alphabet-letters');
+  if(!c||c.children.length) return;
+  LETTERS.forEach((l,i)=>{
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='letter-btn';btn.textContent=l;btn.dataset.index=String(i);
+    btn.addEventListener('click',()=>triggerAlphabetLetter(i));c.appendChild(btn);
+  });
+}
+function updateAlphabetPanelActive(){
+  document.querySelectorAll('#alphabet-panel .letter-btn').forEach((b,i)=>b.classList.toggle('active',i===currentLetterIndex));
+}
+
+function startDissolve(){
+  phase='dissolving';phaseTimer=0;setStatus('dissolving');
+  document.getElementById('btn-reset').disabled=true;closeCustomPanel();startLoop();
+}
+
+function snapshot(){
+  return bricks.map(b=>({tx:b.tx,ty:b.ty,view:b.view,rotated:b.rotated,size:b.size||4,depth:b.depth||1,layer:b.layer||0,
+    groupId:b.groupId||null,
+    customStyle:b.customStyle?{...b.customStyle,params:{...b.customStyle.params}}:null}));
+}
+/** Accept legacy array or `{ bricks, view3d?, source? }`. */
+function unpackLayoutJson(raw){
+  if(raw==null) return null;
+  let v=raw;
+  if(typeof v==='string'){ try{ v=JSON.parse(v); }catch(e){ return null; } }
+  if(Array.isArray(v)) return { bricks:v, view3d:null, source:null };
+  if(v&&typeof v==='object'&&Array.isArray(v.bricks)&&v.bricks.length){
+    return { bricks:v.bricks, view3d:v.view3d||null, source:v.source||null };
+  }
+  return null;
+}
+function buildSourceMeta(){
+  if(currentComp&&currentComp.name==='Imported'){
+    if(_librarySourceSnapshot&&_librarySourceSnapshot.compName){
+      const o={..._librarySourceSnapshot};
+      return o;
+    }
+    return{ compName:'Library' };
+  }
+  if(!currentComp||!currentComp.name) return null;
+  const out={ compName:currentComp.name };
+  if(currentPersp&&currentPersp.name) out.perspName=currentPersp.name;
+  if(currentComp.name==='Alphabet'&&typeof currentLetterIndex==='number') out.letterIndex=currentLetterIndex;
+  if(currentComp.name==='Word'&&currentWord) out.word=String(currentWord).slice(0,160);
+  if(currentComp.name!=='Alphabet'&&currentComp.name!=='Word') out.resultCount=resultCount;
+  return out;
+}
+function packLayoutForShare(){
+  const out={ bricks:snapshot(), source:buildSourceMeta() };
+  if(viewMode==='3d'&&typeof orbit!=='undefined'&&orbit){
+    out.view3d={
+      layout3dMode:layout3dMode==='stack'?'stack':'flat',
+      orbit:{
+        theta:orbit.theta, phi:orbit.phi, radius:orbit.radius,
+        targetX:orbit.targetX, targetY:orbit.targetY, targetZ:orbit.targetZ
+      }
+    };
+  }
+  return out;
+}
+function openLibraryPanel(){
+  const btn=document.getElementById('btn-library-toggle');
+  const panel=document.getElementById('library-panel');
+  if(!btn||!panel) return;
+  if(!panel.classList.contains('library-panel--open')){
+    panel.classList.add('library-panel--open');
+    btn.classList.add('active');
+    btn.setAttribute('aria-expanded','true');
+    panel.setAttribute('aria-hidden','false');
+    syncLibraryPanelLayout();
+  }
+  loadLibrary();
+}
+function closeLibraryPanel(){
+  const btn=document.getElementById('btn-library-toggle');
+  const panel=document.getElementById('library-panel');
+  if(!btn||!panel||!panel.classList.contains('library-panel--open')) return;
+  panel.classList.remove('library-panel--open');
+  btn.classList.remove('active');
+  btn.setAttribute('aria-expanded','false');
+  panel.setAttribute('aria-hidden','true');
+  syncLibraryPanelLayout();
+}
+/** 2D white board only: no bricks, annotations, 3D meshes, custom panel, Alphabet/Type chrome. */
+function prepareImportedBlankWorkboard(){
+  if(phase==='dissolving'||phase==='condensing') return false;
+  if(viewMode==='3d') setViewMode('2d');
+  else if(typeMode) exitTypeMode();
+  if(animId){ cancelAnimationFrame(animId); animId=null; }
+  _pendingView3dRestore=null;
+  closeCustomPanel(true);
+  clearSelection();
+  clearAnnotations();
+  bricks=[];
+  phase='holding';
+  unhighlight3d();
+  if(bricksGroup3d){ while(bricksGroup3d.children.length) bricksGroup3d.remove(bricksGroup3d.children[0]); }
+  resizeCanvas();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  _librarySourceSnapshot=null;
+  savedOriginalLayout=null;
+  undoStack=[];
+  updateUndoButton();
+  const br=document.getElementById('btn-reset');
+  if(br) br.disabled=true;
+  return true;
+}
+function applyImportedEmptyBundleUi(){
+  currentComp={ name:'Imported', fn(){ return []; } };
+  currentPersp=CARD_C.find(c=>c.name==='Front View')||CARD_C[0];
+  document.getElementById('label-a').textContent='Imported';
+  document.getElementById('label-c').textContent='Library';
+  document.getElementById('label-count').textContent='0 bricks';
+  document.getElementById('btn-random').classList.remove('active');
+  document.getElementById('btn-letters').classList.remove('active');
+  document.getElementById('btn-type').classList.remove('active');
+  document.getElementById('btn-imported').classList.add('active');
+  document.getElementById('alphabet-panel').classList.remove('visible');
+  document.getElementById('type-bar')?.classList.remove('visible');
+  syncLibraryPanelLayout();
+  if(typeof refreshShareSubmitUi==='function') refreshShareSubmitUi();
+  setStatus('holding');
+  renderFrame();
+}
+/** After Library import: dedicated “Imported” content mode (not Random / Alphabet / Type). */
+function applyImportedSourceToUi(src){
+  const la=document.getElementById('label-a');
+  const lc=document.getElementById('label-c');
+  const ln=document.getElementById('label-count');
+  const br=document.getElementById('btn-random');
+  const bl=document.getElementById('btn-letters');
+  const bt=document.getElementById('btn-type');
+  const bi=document.getElementById('btn-imported');
+  const ap=document.getElementById('alphabet-panel');
+  if(!la||!lc||!ln) return;
+  if(typeMode) exitTypeMode();
+  _librarySourceSnapshot=src&&typeof src==='object'?{...src}:null;
+  currentComp={name:'Imported',fn(){ return []; }};
+  if(src&&src.perspName){
+    currentPersp=CARD_C.find(c=>c.name===src.perspName)||CARD_C.find(c=>c.name==='Front View')||CARD_C[0];
+  } else {
+    currentPersp=CARD_C.find(c=>c.name==='Front View')||CARD_C[0];
+  }
+  la.textContent='Imported';
+  if(src&&src.compName&&src.perspName) lc.textContent=src.compName+' · '+src.perspName;
+  else if(src&&src.compName) lc.textContent=src.compName;
+  else lc.textContent='Library';
+  ln.textContent=String(bricks.length)+' bricks';
+  if(br) br.classList.remove('active');
+  if(bl) bl.classList.remove('active');
+  if(bt) bt.classList.remove('active');
+  if(bi) bi.classList.add('active');
+  if(ap) ap.classList.remove('visible');
+  syncLibraryPanelLayout();
+  if(typeof refreshShareSubmitUi==='function') refreshShareSubmitUi();
+  openLibraryPanel();
+}
+function clearImportedLayoutModeUi(){
+  _librarySourceSnapshot=null;
+  document.getElementById('btn-imported')?.classList.remove('active');
+  closeLibraryPanel();
+}
+/** Imported + Library bundle: blank workboard (UI only) until import or Add Brick. */
+function enterImportedModeBlank(){
+  if(!prepareImportedBlankWorkboard()) return;
+  applyImportedEmptyBundleUi();
+  document.getElementById('status-hint').textContent='Blank canvas · Library to import · Add Brick (up to 2x4) to start';
+  openLibraryPanel();
+}
+function applySnapshot(snap){
+  if(!snap||snap.length!==bricks.length) return;
+  for(let i=0;i<bricks.length;i++){
+    const b=bricks[i],s=snap[i];
+    b.tx=b.x=s.tx;b.ty=b.y=s.ty;b.view=s.view;b.rotated=(s.view==='front')?!!s.rotated:false;
+    b.size=s.size||4;b.depth=s.depth||1;b.layer=s.layer||0;b.groupId=s.groupId||null;
+    b.customStyle=s.customStyle?{...s.customStyle,params:{...s.customStyle.params}}:null;
+  }
+  renderFrame();updateUndoButton();
+}
+function saveOriginalLayout(){
+  savedOriginalLayout=snapshot();undoStack=[];updateUndoButton();
+  document.getElementById('btn-reset').disabled=false;
+  if(viewMode==='3d'&&bricksGroup3d){syncBricksTo3D();setOrbitFrom2DView();}
+}
+function resetLayout(){
+  if(phase!=='holding'||!savedOriginalLayout) return;
+  applySnapshot(savedOriginalLayout);undoStack=[];updateUndoButton();
+  if(viewMode==='3d'&&bricksGroup3d) syncBricksTo3D();
+}
+function undo(){
+  if(phase!=='holding'||undoStack.length===0) return;
+  applySnapshot(undoStack.pop());updateUndoButton();
+  if(viewMode==='3d'&&bricksGroup3d) syncBricksTo3D();
+}
+function updateUndoButton(){document.getElementById('btn-undo').disabled=undoStack.length===0;}
+
+let supabaseClient=null;
+let _shareSubmitLast=0;
+function isSupabaseConfigured(){
+  const c=window.BRICK_SUPABASE;
+  if(!c||!c.url||!c.anonKey) return false;
+  const u=String(c.url);
+  if(u.includes('YOUR_PROJECT_REF')||u.includes('YOUR_')||u.includes('PASTE_')) return false;
+  if(!u.startsWith('https://')||!u.includes('.supabase.co')) return false;
+  const k=String(c.anonKey);
+  if(k.includes('YOUR_SUPABASE_ANON_KEY')||k.includes('YOUR_')) return false;
+  return k.length>24;
+}
+function initSupabaseClient(){
+  if(typeof supabase==='undefined'||!supabase.createClient) return null;
+  if(!isSupabaseConfigured()) return null;
+  const c=window.BRICK_SUPABASE;
+  try{ return supabase.createClient(c.url, c.anonKey); }catch(e){ console.warn('Supabase init failed', e); return null; }
+}
+function refreshShareSubmitUi(){
+  const el=document.getElementById('btn-share-submit');
+  if(!el) return;
+  const ok=!!supabaseClient&&isSupabaseConfigured();
+  el.disabled=!ok||phase!=='holding'||!bricks.length;
+  if(!ok) el.title='Edit brick-config.local.js (url + anonKey), then reload';
+  else if(viewMode==='3d') el.title='Submit layout to gallery (brick positions synced from 3D; camera angle + Flat/Stack saved for 3D reopen)';
+  else el.title='Submit current 2D layout to Supabase (shared gallery)';
+}
+async function submitLayoutToSharedSpace(){
+  if(phase!=='holding'||!bricks.length) return;
+  if(!supabaseClient){ alert('Supabase is not configured.'); return; }
+  const t=Date.now();
+  if(t-_shareSubmitLast<6000){
+    const h=document.getElementById('status-hint');
+    if(h) h.textContent='Please wait a few seconds between submissions';
+    return;
+  }
+  const title=window.prompt('Optional title for this layout (Cancel = don’t submit):','');
+  if(title===null) return;
+  const hint=document.getElementById('status-hint');
+  const prevHint=hint?hint.textContent:'';
+  if(hint){ hint.textContent='Submitting…'; hint.style.color='#888'; }
+  if(viewMode==='3d'&&bricksGroup3d) syncBricksFrom3DMeshesToData();
+  resizeCanvas();
+  const row={
+    layout: packLayoutForShare(),
+    canvas_w: canvas.width,
+    canvas_h: canvas.height,
+    brick_count: bricks.length,
+    title: title.trim()===''?null:title.trim().slice(0,200)
+  };
+  // Do not chain .select() after insert: with RLS, anon has no SELECT policy (by design), and PostgREST would fail returning rows.
+  const { error }=await supabaseClient.from('brick_submissions').insert(row);
+  if(error){
+    if(hint){ hint.textContent='Share failed: '+error.message; hint.style.color='#c00'; }
+    console.error(error);
+    setTimeout(()=>{ if(hint){ hint.textContent=prevHint; hint.style.color='#888'; } }, 5000);
+    return;
+  }
+  _shareSubmitLast=Date.now();
+  if(hint){ hint.textContent='Saved to gallery'; hint.style.color='#222'; }
+  const lp=document.getElementById('library-panel');
+  if(lp && lp.classList.contains('library-panel--open')) loadLibrary();
+  setTimeout(()=>{ if(hint){ hint.textContent=prevHint; hint.style.color='#888'; } }, 4500);
+}
+function layoutJsonToBrickObjects(layout){
+  if(!Array.isArray(layout)||!layout.length) return [];
+  return layout.map(s=>{
+    const tx=+s.tx, ty=+s.ty;
+    let cs=null;
+    if(s.customStyle){
+      try{ cs=JSON.parse(JSON.stringify(s.customStyle)); }catch(_){ cs=null; }
+      if(cs&&cs.params&&typeof cs.params==='object') cs.params={...cs.params};
+    }
+    return{
+      x:tx,y:ty,sx:tx,sy:ty,tx,ty,
+      view:s.view||'front',
+      rotated:((s.view||'front')==='front')?!!s.rotated:false,
+      size:s.size||4,
+      depth:s.depth||1,
+      layer:s.layer||0,
+      groupId:s.groupId||null,
+      customStyle:cs,
+      t:1,interval:6,delay:0
+    };
+  });
+}
+/** Restore layout from a Supabase row’s `layout` JSON (array or `{ bricks, view3d?, source? }`).
+ *  opts.preparedBricks: already-built brick objects (e.g. layers computed before scaling from gallery). */
+function replaceBricksFromLayout(layout, view3dMeta, sourceMeta, opts){
+  const o=opts||{};
+  if(view3dMeta&&view3dMeta.orbit){
+    if(viewMode!=='3d'||!bricksGroup3d) _pendingView3dRestore=view3dMeta;
+    else _pendingView3dRestore=null;
+  } else {
+    _pendingView3dRestore=null;
+  }
+  if(o.preparedBricks){
+    if(!o.preparedBricks.length) return false;
+    bricks=o.preparedBricks;
+  } else {
+    if(!Array.isArray(layout)||!layout.length) return false;
+    bricks=layoutJsonToBrickObjects(layout);
+    recomputeFrontLayersBySupport();
+    if(typeof snapFullEmbedFrontBricks==='function') snapFullEmbedFrontBricks();
+    recomputeFrontLayersBySupport();
+  }
+  clearSelection();
+  clearAnnotations();
+  savedOriginalLayout=null;
+  undoStack=[];
+  updateUndoButton();
+  const br=document.getElementById('btn-reset');
+  if(br) br.disabled=true;
+  if(viewMode==='3d'&&bricksGroup3d){
+    if(view3dMeta&&view3dMeta.orbit) applyImportedView3d(view3dMeta);
+    else setOrbitFrom2DView();
+    syncBricksTo3D();
+  }
+  phase='holding';
+  applyImportedSourceToUi(sourceMeta);
+  if(typeof setStatus==='function') setStatus('holding');
+  renderFrame();
+  return true;
+}
+
+function escapeHtmlLib(str){
+  const d=document.createElement('div');
+  d.textContent=str==null?'':String(str);
+  return d.innerHTML;
+}
+function scaleLayoutToCurrentCanvas(layout, fromW, fromH){
+  if(!Array.isArray(layout)||!layout.length) return layout;
+  resizeCanvas();
+  const rw=canvas.width, rh=canvas.height;
+  if(!fromW||!fromH||fromW<=0||fromH<=0) return layout;
+  if(Math.abs(fromW-rw)<2&&Math.abs(fromH-rh)<2) return layout;
+  const s=Math.min(rw/fromW, rh/fromH);
+  const cx=fromW/2, cy=fromH/2, rx=rw/2, ry=rh/2;
+  return layout.map(b=>({
+    ...b,
+    tx:(b.tx-cx)*s+rx,
+    ty:(b.ty-cy)*s+ry
+  }));
+}
+/** Like scaleLayoutToCurrentCanvas but mutates live brick objects (tx/ty/x/y/sx/sy) and preserves layers. */
+function scaleLayoutBrickObjectsInPlace(list, fromW, fromH){
+  if(!list||!list.length) return;
+  resizeCanvas();
+  const rw=canvas.width, rh=canvas.height;
+  if(!fromW||!fromH||fromW<=0||fromH<=0) return;
+  if(Math.abs(fromW-rw)<2&&Math.abs(fromH-rh)<2) return;
+  const s=Math.min(rw/fromW, rh/fromH);
+  const cx=fromW/2, cy=fromH/2, rx=rw/2, ry=rh/2;
+  for(const b of list){
+    const tx=(b.tx-cx)*s+rx, ty=(b.ty-cy)*s+ry;
+    b.tx=tx; b.ty=ty; b.x=b.sx=tx; b.y=b.sy=ty;
+  }
+}
+let _libraryPreviewRow=null;
+function recomputeFrontLayersForList(list){
+  const front=(list||[]).filter(b=>b.view==='front');
+  if(!front.length) return;
+  const ordered=front.slice().sort((a,b)=>b.ty-a.ty);
+  for(const b of ordered) b.layer=getSupportedLayerAt(b,b.tx,b.ty,list);
+}
+/** Library preview: render in share-time pixel space (saved canvas_w × canvas_h).
+ *  Scaling tx/ty to the current main canvas makes stacked spacing s×BSTK while layer/stud
+ *  math still uses BSTK → wrong hierarchy when s≠1. */
+function paintBrickListToPreviewCanvas(pcvs, brickListOrig, savedW, savedH){
+  if(!pcvs||!brickListOrig||!brickListOrig.length) return;
+  const list=brickListOrig.map(b=>({
+    ...b,
+    customStyle:b.customStyle?JSON.parse(JSON.stringify(b.customStyle)):null,
+    x:b.tx,y:b.ty,sx:b.tx,sy:b.ty
+  }));
+  recomputeFrontLayersForList(list);
+  const sw=Number(savedW), sh=Number(savedH);
+  const useSavedViewport=Number.isFinite(sw)&&Number.isFinite(sh)&&sw>0&&sh>0;
+  let w, h, drawList;
+  if(useSavedViewport){
+    w=Math.max(1,Math.ceil(sw));
+    h=Math.max(1,Math.ceil(sh));
+    drawList=list;
+  } else {
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const b of list){
+      const bd=getBounds(b.tx,b.ty,b.view,b.rotated,b.size);
+      minX=Math.min(minX,bd.x0); minY=Math.min(minY,bd.y0);
+      maxX=Math.max(maxX,bd.x1); maxY=Math.max(maxY,bd.y1);
+    }
+    const pad=28;
+    const bw=Math.max(maxX-minX,1), bh=Math.max(maxY-minY,1);
+    w=Math.max(1,Math.ceil(bw+pad*2));
+    h=Math.max(1,Math.ceil(bh+pad*2));
+    const ox=pad-minX, oy=pad-minY;
+    drawList=list.map(b=>({
+      ...b,
+      tx:b.tx+ox, ty:b.ty+oy, x:b.tx+ox, y:b.ty+oy, sx:b.tx+ox, sy:b.ty+oy
+    }));
+  }
+  pcvs.width=w;
+  pcvs.height=h;
+  const pctx=pcvs.getContext('2d');
+  const buf=new Uint8ClampedArray(w*h*4);
+  buf.fill(255);
+  const sorted=drawList.slice().sort((a,b)=>{
+    const ld=(a.layer||0)-(b.layer||0);
+    if(ld!==0) return ld;
+    return (a.ty||0)-(b.ty||0);
+  });
+  for(const b of sorted){
+    const bx=b.tx, by=b.ty;
+    const covered=getCoveredStudXs(b,bx,by,drawList,true);
+    if(!b.customStyle) renderBrickToBuf(buf,w,h,b,bx,by,20,covered,drawList);
+  }
+  const imgData=pctx.createImageData(w,h);
+  imgData.data.set(buf);
+  pctx.putImageData(imgData,0,0);
+  for(const b of sorted){
+    if(!b.customStyle) continue;
+    const bx=b.tx, by=b.ty;
+    const bd=getBounds(bx,by,b.view,b.rotated,b.size,b.depth);
+    const edgePad=6;
+    const rx=Math.max(0,Math.floor(bd.x0-edgePad)),ry=Math.max(0,Math.floor(bd.y0-edgePad));
+    const rw=Math.min(w-rx,Math.ceil(bd.x1-bd.x0+edgePad*2+1));
+    const rh=Math.min(h-ry,Math.ceil(bd.y1-bd.y0+edgePad*2+1));
+    if(rw<=0||rh<=0) continue;
+    const off=document.createElement('canvas');off.width=rw;off.height=rh;
+    const octx=off.getContext('2d');
+    octx.fillStyle='#fff';octx.fillRect(0,0,rw,rh);
+    renderCustomBrick(octx,bx-rx,by-ry,b.customStyle,28/16,b.view,b.rotated,b.size);
+    const od=octx.getImageData(0,0,rw,rh).data;
+    const md=pctx.getImageData(rx,ry,rw,rh);const md2=md.data;
+    for(let i=0;i<od.length;i+=4){
+      if(od[i]<245||od[i+1]<245||od[i+2]<245){
+        md2[i]=od[i];md2[i+1]=od[i+1];md2[i+2]=od[i+2];md2[i+3]=255;
+      }
+    }
+    pctx.putImageData(md,rx,ry);
+  }
+}
+function closeLibraryPreview(){
+  const ov=document.getElementById('library-preview-overlay');
+  if(ov){ ov.classList.remove('visible'); ov.setAttribute('aria-hidden','true'); }
+  _libraryPreviewRow=null;
+}
+function openLibraryPreview(row){
+  let layout=row.layout;
+  if(typeof layout==='string'){ try{ layout=JSON.parse(layout); }catch(e){ return; } }
+  const u=unpackLayoutJson(layout);
+  if(!u||!u.bricks.length) return;
+  _libraryPreviewRow=row;
+  const list=layoutJsonToBrickObjects(u.bricks);
+  const ov=document.getElementById('library-preview-overlay');
+  const tit=document.getElementById('library-preview-title');
+  if(tit) tit.textContent=(row.title&&String(row.title).trim())?String(row.title).trim():'Untitled';
+  if(ov){ ov.classList.add('visible'); ov.setAttribute('aria-hidden','false'); }
+  requestAnimationFrame(()=>{
+    const pcvs=document.getElementById('library-preview-canvas');
+    if(pcvs) paintBrickListToPreviewCanvas(pcvs, list, row.canvas_w, row.canvas_h);
+  });
+}
+function openLibraryImportToMain(row){
+  if(phase==='condensing'||phase==='dissolving'){
+    alert('Wait until the scene is ready.');
+    return;
+  }
+  let layout=row.layout;
+  if(typeof layout==='string'){ try{ layout=JSON.parse(layout); }catch(e){ return; } }
+  const u=unpackLayoutJson(layout);
+  if(!u||!u.bricks.length) return;
+  const list=layoutJsonToBrickObjects(u.bricks);
+  recomputeFrontLayersForList(list);
+  scaleLayoutBrickObjectsInPlace(list, row.canvas_w, row.canvas_h);
+  replaceBricksFromLayout(null, u.view3d, u.source, { preparedBricks: list });
+  closeLibraryPreview();
+}
+function setLibraryListSelection(itemEl){
+  const root=document.getElementById('library-list');
+  if(!root) return;
+  root.querySelectorAll('.library-item.library-item--selected').forEach(n=>n.classList.remove('library-item--selected'));
+  if(itemEl) itemEl.classList.add('library-item--selected');
+}
+function syncLibraryPanelLayout(){
+  const panel=document.getElementById('library-panel');
+  const mw=document.getElementById('main-work');
+  if(!panel||!mw) return;
+  if(!panel.classList.contains('library-panel--open')){
+    panel.style.removeProperty('top');
+    panel.style.removeProperty('height');
+    return;
+  }
+  const r=mw.getBoundingClientRect();
+  panel.style.top=r.top+'px';
+  panel.style.height=r.height+'px';
+}
+async function loadLibrary(){
+  const listEl=document.getElementById('library-list');
+  const emptyEl=document.getElementById('library-empty');
+  const statusEl=document.getElementById('library-status');
+  if(!listEl||!emptyEl) return;
+  if(!supabaseClient||!isSupabaseConfigured()){
+    if(statusEl) statusEl.textContent='Supabase not set: edit brick-config.js on your host (or add brick-config.local.js with url + anon key), then refresh.';
+    emptyEl.style.display='block';
+    return;
+  }
+  if(statusEl) statusEl.textContent='Loading…';
+  const { data, error }=await supabaseClient.from('brick_submissions')
+    .select('id, created_at, title, brick_count, canvas_w, canvas_h, layout')
+    .order('created_at',{ascending:false})
+    .limit(80);
+  if(error){
+    if(statusEl){ statusEl.textContent=error.message; statusEl.classList.remove('hint'); }
+    return;
+  }
+  if(statusEl){ statusEl.textContent=''; statusEl.classList.remove('hint'); }
+  listEl.innerHTML='';
+  if(!data||!data.length){
+    emptyEl.style.display='block';
+    // RLS: INSERT can work while SELECT has no policy — PostgREST returns [] with no error.
+    if(statusEl){
+      statusEl.textContent='Dashboard has rows but list is empty? Run supabase-library-select-policy.sql in Supabase SQL Editor, then Refresh.';
+      statusEl.classList.add('hint');
+    }
+    return;
+  }
+  emptyEl.style.display='none';
+  for(const row of data){
+    const div=document.createElement('div');
+    div.className='library-item';
+    const t=row.title||'Untitled';
+    const d=new Date(row.created_at);
+    const ds=isNaN(d.getTime())?'':d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    div.innerHTML='<div class="library-item-title">'+escapeHtmlLib(t)+'</div>'+
+      '<div class="library-item-meta">'+(row.brick_count||0)+' bricks · '+escapeHtmlLib(ds)+'</div>'+
+      '<div class="library-item-actions">'+
+      '<button type="button" class="btn library-view">View</button>'+
+      '<button type="button" class="btn library-import">Import</button></div>';
+    div.querySelector('.library-view').addEventListener('click',()=>{ setLibraryListSelection(div); openLibraryPreview(row); });
+    div.querySelector('.library-import').addEventListener('click',()=>openLibraryImportToMain(row));
+    div.addEventListener('click',e=>{
+      if(e.target.closest('.library-item-actions')) return;
+      setLibraryListSelection(div);
+      openLibraryPreview(row);
+    });
+    listEl.appendChild(div);
+  }
+}
+
+function recomputeFrontLayersBySupport(){
+  const front=bricks.filter(b=>b.view==='front');
+  if(!front.length) return;
+  // Bottom rows first, so upper rows can inherit layer from true stud support below.
+  const ordered=front.slice().sort((a,b)=>b.ty-a.ty);
+  for(const b of ordered){
+    b.layer=getSupportedLayerAt(b,b.tx,b.ty);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  BRICK UPDATE
+// ════════════════════════════════════════════════════════════
+function updateBrick(b){
+  if(b===dragBrick) return;
+  if(phase==='condensing'){
+    b.t=Math.min(1,b.t+.016);
+    if(b.t<b.delay) return;
+    const ease=easeOutCubic(Math.min(1,(b.t-b.delay)/(1-b.delay+.001)));
+    b.x=lerp(b.sx,b.tx,ease);b.y=lerp(b.sy,b.ty,ease);
+    b.interval=lerp(80,6,ease);
+    if(ease>.92&&ease<.99) b.interval=lerp(b.interval,3.5,.25);
+  } else if(phase==='dissolving'){
+    const dt=Math.min(1,phaseTimer/75),ease=dt*dt;
+    b.interval=lerp(6,100,ease);
+    b.x+=(b.x-canvas.width/2)*.014;b.y+=(b.y-canvas.height/2)*.014;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+let _buf=null,_bgCache=null;
+let _renderQueued=false;
+function queueRender(){
+  if(_renderQueued) return;
+  _renderQueued=true;
+  requestAnimationFrame(()=>{
+    _renderQueued=false;
+    renderFrame();
+  });
+}
+
+function renderBrickToBuf(buf,W,H,b,bx,by,col,coveredStudXs,seamBrickList){
+  const uniformVisual=!!dragBrick||!!groupDrag||!!touchGesture;
+  const iv=b.interval||6,rw=Math.max(iv*.22,1.2);
+  const bd=getBounds(bx,by,b.view,b.rotated,b.size,b.depth);
+  const x0=Math.max(0,Math.floor(bd.x0)),x1=Math.min(W-1,Math.ceil(bd.x1));
+  const y0=Math.max(0,Math.floor(bd.y0)),y1=Math.min(H-1,Math.ceil(bd.y1));
+  const strokeW=1.0;
+  const visibleStuds=getStudCenters(bx,by,b.view,b.rotated,b.size,b.depth)
+    .filter(st=>uniformVisual||!coveredStudXs||!coveredStudXs.has(Math.round(st.sx)));
+  for(let py=y0;py<=y1;py++){
+    for(let px=x0;px<=x1;px++){
+      const db=sdfBody(px+.5,py+.5,bx,by,b.view,b.rotated,b.size,b.depth);
+      let df=db;
+      for(const st of visibleStuds)
+        df=Math.min(df,sdBox(px+.5,py+.5,st.sx,st.sy,st.hw,st.hh,SR));
+      const i=(py*W+px)*4;
+      if(brickStyle==='outline'||brickStyle==='dashed'){
+        if(db<=0){
+          buf[i]=buf[i+1]=buf[i+2]=255;
+        }
+      } else {
+        if(db<=0){
+          buf[i]=buf[i+1]=buf[i+2]=255;
+          if((Math.abs(df)%iv)<rw) buf[i]=buf[i+1]=buf[i+2]=col;
+        } else if(df<=0){
+          let t=-1;
+          for(const st of visibleStuds){
+            const nx=(px+.5-st.sx)/st.hw,ny=(py+.5-st.sy)/st.hh,e=nx*nx+ny*ny;
+            if(e<=1){t=Math.max(t,Math.max(0,1-e));break;}
+          }
+          if(t>=0){const sc2=Math.round(col+t*42);buf[i]=buf[i+1]=buf[i+2]=Math.min(255,sc2);}
+          else if((Math.abs(df)%iv)<rw){buf[i]=buf[i+1]=buf[i+2]=col;}
+        }
+      }
+    }
+  }
+  if(brickStyle==='outline'||brickStyle==='dashed'){
+    const seamList=seamBrickList!=null?seamBrickList:bricks;
+    drawBodyEdges(buf,W,H,b,bx,by,col,uniformVisual?[b]:seamList);
+  }
+}
+
+function normalizeParallelRows(list){
+  if(!list||!list.length) return;
+  const tol=Math.max(3,Math.min(12,BSTK*0.22));
+  const rows=[];
+  const sorted=list.slice().sort((a,b)=>a.ty-b.ty);
+  for(const b of sorted){
+    let r=rows.find(rr=>Math.abs(rr.y-b.ty)<=tol);
+    if(!r){ r={y:b.ty,arr:[]}; rows.push(r); }
+    r.arr.push(b);
+    r.y=r.arr.reduce((s,x)=>s+x.ty,0)/r.arr.length;
+  }
+  for(const r of rows){
+    const y=Math.round(r.arr.reduce((s,x)=>s+x.ty,0)/r.arr.length);
+    for(const b of r.arr){ b.ty=b.y=y; }
+  }
+}
+function quantizeBrickPositions(list){
+  if(!list) return;
+  for(const b of list){
+    b.tx=Math.round(b.tx); b.ty=Math.round(b.ty);
+    b.x=b.tx; b.y=b.ty;
+  }
+}
+function enforceMovedBricksEmbedding(moved){
+  if(!moved||!moved.length) return;
+  const movedSet=new Set(moved);
+  const xTolFactor=0.85;
+  const minGap=BSTK*0.82;
+  for(const mb of moved){
+    if(mb.view!=='front') continue;
+    const mhw=mb.rotated?BH/2:brickW(mb.size)/2;
+    for(const ob of bricks){
+      if(ob===mb||movedSet.has(ob)||ob.view!=='front') continue;
+      const ohw=ob.rotated?BH/2:brickW(ob.size)/2;
+      const xOverlap=Math.abs(mb.tx-ob.tx)<(mhw+ohw)*xTolFactor;
+      if(!xOverlap) continue;
+      const dy=mb.ty-ob.ty;
+      const ady=Math.abs(dy);
+      if(ady<=2||ady>=minGap) continue; // same-row or valid stacked spacing
+      const s=dy>=0?1:-1;
+      // Snap to nearest legal vertical relation with this neighbor.
+      const sameRowDelta=Math.abs(mb.ty-ob.ty);
+      const stackDelta=Math.abs(mb.ty-(ob.ty+s*BSTK));
+      mb.ty = (sameRowDelta<=stackDelta) ? ob.ty : (ob.ty+s*BSTK);
+      mb.y=mb.ty;
+    }
+  }
+}
+function normalizeParallelRowsGlobal(){
+  const front=bricks.filter(b=>b.view==='front');
+  if(!front.length) return;
+  // Visual-row alignment should not depend on layer.
+  normalizeParallelRows(front);
+}
+
+function getSharedRightSeam(b,bx,by,list){
+  if(!b||b.view==='top') return false;
+  const hw=b.rotated?BH/2:brickW(b.size)/2;
+  const yTol=Math.max(1.2,BSTK*0.03);
+  const xTol=0.9;
+  for(const ob of (list||bricks)){
+    if(ob===b||ob.view==='top') continue;
+    if((ob.layer||0)!==(b.layer||0)) continue;
+    if(Math.abs(ob.ty-by)>yTol) continue;
+    const ohw=ob.rotated?BH/2:brickW(ob.size)/2;
+    if(Math.abs((bx+hw)-(ob.tx-ohw))<=xTol) return true;
+  }
+  return false;
+}
+
+function getSharedBottomSeam(b,bx,by,list){
+  if(!b||b.view==='top') return false;
+  const hh=BH/2;
+  const yTol=0.9;
+  const xTol=Math.max(1.2,U*0.08);
+  const hw=b.rotated?BH/2:brickW(b.size)/2;
+  for(const ob of (list||bricks)){
+    if(ob===b||ob.view==='top') continue;
+    if((ob.layer||0)!==(b.layer||0)) continue;
+    const ohh=BH/2;
+    const ohw=ob.rotated?BH/2:brickW(ob.size)/2;
+    if(Math.abs((by+hh)-(ob.ty-ohh))>yTol) continue;
+    // horizontal overlap required
+    if(Math.abs(bx-ob.tx)<(hw+ohw)-xTol) return true;
+  }
+  return false;
+}
+
+function drawBodyEdges(buf,W,H,b,bx,by,col,list){
+  if(b.view==='top'){
+    const hw=brickW(b.size)/2,hd=(b.depth||1)*U/2;
+    const xL=Math.round(bx-hw),xR=Math.round(bx+hw),yT=Math.round(by-hd),yB=Math.round(by+hd);
+    const setPx=(x,y)=>{ if(x>=0&&y>=0&&x<W&&y<H){ const i=(y*W+x)*4; buf[i]=buf[i+1]=buf[i+2]=col; buf[i+3]=255; } };
+    for(let x=xL;x<=xR;x++){ setPx(x,yT); setPx(x,yB); }
+    for(let y=yT;y<=yB;y++){ setPx(xL,y); setPx(xR,y); }
+    return;
+  }
+  const hw=(b.rotated?BH/2:brickW(b.size)/2);
+  const hh=BH/2;
+  const xL=Math.round(bx-hw), xR=Math.round(bx+hw);
+  const yT=Math.round(by-hh), yB=Math.round(by+hh);
+  const sharedRight=getSharedRightSeam(b,bx,by,list);
+  const sharedBottom=getSharedBottomSeam(b,bx,by,list);
+  const setPx=(x,y)=>{ if(x>=0&&y>=0&&x<W&&y<H){ const i=(y*W+x)*4; buf[i]=buf[i+1]=buf[i+2]=col; buf[i+3]=255; } };
+  for(let x=xL;x<=xR;x++) setPx(x,yT);          // top always
+  for(let y=yT;y<=yB;y++) setPx(xL,y);          // left always
+  if(!sharedRight)  for(let y=yT;y<=yB;y++) setPx(xR,y);
+  if(!sharedBottom) for(let x=xL;x<=xR;x++) setPx(x,yB);
+}
+
+// Returns set of stud X positions (rounded) on brick b that are covered by upper bricks.
+// Upper brick holes are at the same X positions as its own studs (stud-to-hole symmetry).
+function getCoveredStudXs(b,bx,by,allBricks,locked){
+  if(b.view==='top') return new Set();
+  const myStuds=getStudCenters(bx,by,b.view,b.rotated,b.size,b.depth);
+  if(!myStuds.length) return new Set();
+  const covered=new Set();
+  for(const upper of allBricks){
+    if(upper===b) continue;
+    if(upper.view==='top') continue;
+    // Only bricks that are exactly one BSTK above can cover studs
+    if((upper.layer||0) <= (b.layer||0)) continue; // upper must be higher layer
+    const ux=locked?upper.tx:upper.x;
+    const uy=locked?upper.ty:upper.y;
+    if(Math.abs((uy+BSTK)-by)>COVERED_STUD_Y_TOL) continue;
+    const upperStuds=getStudCenters(ux,uy,upper.view,upper.rotated,upper.size,upper.depth);
+    const holeXs=upperStuds.map(st=>st.sx);
+    for(const st of myStuds){
+      if(holeXs.some(hx=>Math.abs(st.sx-hx)<U*0.35)){
+        covered.add(Math.round(st.sx));
+      }
+    }
+  }
+  return covered;
+}
+function drawVectorStudOutlinesOn(targetCtx,sorted,locked,strokeColor){
+  if(!(brickStyle==='outline'||brickStyle==='dashed')) return;
+  targetCtx.save();
+  targetCtx.strokeStyle=strokeColor||'#141414';
+  targetCtx.lineWidth=1.1;
+  targetCtx.lineJoin='round';
+  targetCtx.lineCap='round';
+  if(brickStyle==='dashed') targetCtx.setLineDash([2,2]);
+  else targetCtx.setLineDash([]);
+  for(const b of sorted){
+    if(b.customStyle) continue;
+    const bx=locked?b.tx:b.x,by=locked?b.ty:b.y;
+    const covered=getCoveredStudXs(b,bx,by,bricks,locked);
+    const studs=getStudCenters(bx,by,b.view,b.rotated,b.size,b.depth)
+      .filter(st=>!covered.has(Math.round(st.sx)));
+    for(const st of studs){
+      targetCtx.beginPath();
+      targetCtx.ellipse(st.sx,st.sy,Math.max(1,st.hw),Math.max(1,st.hh),0,0,Math.PI*2);
+      targetCtx.stroke();
+    }
+  }
+  targetCtx.restore();
+}
+function drawVectorStudOutlines(sorted,locked){
+  drawVectorStudOutlinesOn(ctx,sorted,locked,'#141414');
+}
+
+function renderFrame(){
+  const W=canvas.width,H=canvas.height;
+  if(!_buf||_buf.length!==W*H*4) _buf=new Uint8ClampedArray(W*H*4);
+  const locked=phase==='holding';
+  const sorted=bricks.slice().sort((a,b)=>{
+    const ld=(a.layer||0)-(b.layer||0);
+    if(ld!==0) return ld;
+    return (a.ty||0)-(b.ty||0); // same layer: top (smaller ty) first
+  });
+
+  // During drag: use cached background (all bricks except the dragged one)
+  // to avoid re-rendering expensive custom bricks every mousemove frame
+  if(dragBrick&&_bgCache&&_bgCache.length===W*H*4){
+    _buf.set(_bgCache);
+    // Draw just the dragged brick on top of the cached background
+    const dragCovered=getCoveredStudXs(dragBrick,dragBrick.tx,dragBrick.ty,bricks,true);
+    renderBrickToBuf(_buf,W,H,dragBrick,dragBrick.tx,dragBrick.ty,snapTarget&&snapTarget===dragBrick?90:20,dragCovered);
+    const imgData=ctx.createImageData(W,H);imgData.data.set(_buf);ctx.putImageData(imgData,0,0);
+    // If the dragged brick has a custom style, composite it without white-out
+    if(dragBrick.customStyle){
+      const bd=getBounds(dragBrick.tx,dragBrick.ty,dragBrick.view,dragBrick.rotated,dragBrick.size);
+      const pad=6;
+      const rx=Math.max(0,Math.floor(bd.x0-pad)),ry=Math.max(0,Math.floor(bd.y0-pad));
+      const rw=Math.min(W-rx,Math.ceil(bd.x1-bd.x0+pad*2+1));
+      const rh=Math.min(H-ry,Math.ceil(bd.y1-bd.y0+pad*2+1));
+      if(rw>0&&rh>0){
+        const off=document.createElement('canvas');off.width=rw;off.height=rh;
+        const octx=off.getContext('2d');
+        octx.fillStyle='#fff';octx.fillRect(0,0,rw,rh);
+        renderCustomBrick(octx,dragBrick.tx-rx,dragBrick.ty-ry,dragBrick.customStyle,28/16,dragBrick.view,dragBrick.rotated,dragBrick.size);
+        const od=octx.getImageData(0,0,rw,rh).data;
+        const md=ctx.getImageData(rx,ry,rw,rh);const md2=md.data;
+        for(let i=0;i<od.length;i+=4){
+          if(od[i]<245||od[i+1]<245||od[i+2]<245){
+            md2[i]=od[i];md2[i+1]=od[i+1];md2[i+2]=od[i+2];md2[i+3]=255;
+          }
+        }
+        ctx.putImageData(md,rx,ry);
+      }
+    }
+    drawVectorStudOutlines(sorted,true);
+    drawSnapGuides(W,H);
+    drawSelectionOverlay();
+    if(phase==='holding') refreshShareSubmitUi();
+    return;
+  }
+
+  _buf.fill(255);
+  // Render all non-custom bricks into pixel buffer
+  for(const b of sorted){
+    const bx=locked?b.tx:b.x,by=locked?b.ty:b.y;
+    const covered=getCoveredStudXs(b,bx,by,bricks,locked);
+    if(!b.customStyle) renderBrickToBuf(_buf,W,H,b,bx,by,20,covered);
+  }
+  const imgData=ctx.createImageData(W,H);imgData.data.set(_buf);ctx.putImageData(imgData,0,0);
+  // Custom-styled bricks: render to offscreen, composite only non-white pixels
+  for(const b of sorted){
+    if(!b.customStyle) continue;
+    const bx=locked?b.tx:b.x,by=locked?b.ty:b.y;
+    const bd=getBounds(bx,by,b.view,b.rotated,b.size,b.depth);
+    const pad=6;
+    const rx=Math.max(0,Math.floor(bd.x0-pad)),ry=Math.max(0,Math.floor(bd.y0-pad));
+    const rw=Math.min(W-rx,Math.ceil(bd.x1-bd.x0+pad*2+1));
+    const rh=Math.min(H-ry,Math.ceil(bd.y1-bd.y0+pad*2+1));
+    if(rw<=0||rh<=0) continue;
+    // Draw to offscreen
+    const off=document.createElement('canvas');off.width=rw;off.height=rh;
+    const octx=off.getContext('2d');
+    octx.fillStyle='#fff';octx.fillRect(0,0,rw,rh);
+    renderCustomBrick(octx,bx-rx,by-ry,b.customStyle,28/16,b.view,b.rotated,b.size);
+    // Read pixels and composite: only overwrite where offscreen is not white
+    const od=octx.getImageData(0,0,rw,rh).data;
+    const md=ctx.getImageData(rx,ry,rw,rh);const md2=md.data;
+    for(let i=0;i<od.length;i+=4){
+      // If offscreen pixel is not near-white, overwrite main canvas
+      if(od[i]<245||od[i+1]<245||od[i+2]<245){
+        md2[i]=od[i];md2[i+1]=od[i+1];md2[i+2]=od[i+2];md2[i+3]=255;
+      }
+    }
+    ctx.putImageData(md,rx,ry);
+  }
+  drawVectorStudOutlines(sorted,locked);
+  drawSnapGuides(W,H);
+  drawSelectionOverlay();
+  if(phase==='holding') refreshShareSubmitUi();
+}
+
+function drawSnapGuides(W,H){
+  if(!dragBrick||!_lastSnap||viewMode!=='2d') return;
+  const s=_lastSnap;
+  const gx=s.x, gy=(s.dir==='h'&&s.target)?s.target.ty:s.y;
+  _snapPulse+=0.18;
+  const pulse=1+Math.sin(_snapPulse)*0.2;
+  ctx.save();
+  ctx.strokeStyle='rgba(30,30,30,0.42)';
+  ctx.lineWidth=1;
+  ctx.setLineDash([5,5]);
+  if(s.dir==='v'){
+    ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+  }else{
+    ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(0,140,255,0.28)';
+  ctx.beginPath(); ctx.arc(gx,gy,6*pulse,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,140,255,0.9)';
+  ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.arc(gx,gy,3.8,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+function drawSelectionOverlay(){
+  if(viewMode!=='2d') return;
+  ctx.save();
+  for(const b of selectedBricks){
+    const bd=getBounds(b.tx,b.ty,b.view,b.rotated,b.size);
+    ctx.strokeStyle='rgba(0,140,255,.85)';
+    ctx.lineWidth=1;
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(Math.floor(bd.x0)-1,Math.floor(bd.y0)-1,Math.ceil(bd.x1-bd.x0)+2,Math.ceil(bd.y1-bd.y0)+2);
+  }
+  if(marquee&&marquee.active){
+    const x=Math.min(marquee.x0,marquee.x1),y=Math.min(marquee.y0,marquee.y1),w=Math.abs(marquee.x1-marquee.x0),h=Math.abs(marquee.y1-marquee.y0);
+    ctx.fillStyle='rgba(0,140,255,.08)';
+    ctx.strokeStyle='rgba(0,140,255,.65)';
+    ctx.setLineDash([6,4]);
+    ctx.fillRect(x,y,w,h);
+    ctx.strokeRect(x,y,w,h);
+  }
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+//  CUSTOM PANEL — live preview, no Apply needed
+// ════════════════════════════════════════════════════════════
+let customTargetBrick=null, customPrevStyle=null;
+let panelTx='Front', panelMethod='Concentric';
+function syncParamControlsFromParams(p){
+  const stroke=document.getElementById('ctl-stroke');
+  const gap=document.getElementById('ctl-gap');
+  const angle=document.getElementById('ctl-angle');
+  const color=document.getElementById('ctl-color');
+  const sv=document.getElementById('ctl-stroke-v');
+  const gv=document.getElementById('ctl-gap-v');
+  const av=document.getElementById('ctl-angle-v');
+  if(!stroke||!gap||!angle||!color||!sv||!gv||!av) return;
+  const sw=(p&&p.strokeWidth)?p.strokeWidth:1.5;
+  const lg=(p&&p.lineGap)?p.lineGap:5;
+  const ang=((p&&p.lineAngle)?p.lineAngle:-Math.PI/4)*180/Math.PI;
+  const ink=(p&&p.ink)?p.ink:'#141414';
+  stroke.value=String(sw); gap.value=String(lg); angle.value=String(Math.round(ang)); color.value=ink;
+  sv.textContent=Number(sw).toFixed(1);
+  gv.textContent=Number(lg).toFixed(1);
+  av.textContent=Math.round(ang)+'°';
+  const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=String(v);};
+  const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setVal('ctl-melt',p&&p.melt!=null?p.melt:.5); setTxt('ctl-melt-v',Number(p&&p.melt!=null?p.melt:.5).toFixed(2));
+  setVal('ctl-drift',p&&p.drift!=null?p.drift:1); setTxt('ctl-drift-v',Number(p&&p.drift!=null?p.drift:1).toFixed(2));
+  setVal('ctl-stretchx',p&&p.stretchX!=null?p.stretchX:1); setTxt('ctl-stretchx-v',Number(p&&p.stretchX!=null?p.stretchX:1).toFixed(2));
+  setVal('ctl-stretchy',p&&p.stretchY!=null?p.stretchY:1); setTxt('ctl-stretchy-v',Number(p&&p.stretchY!=null?p.stretchY:1).toFixed(2));
+  setVal('ctl-dotsize',p&&p.dotSize!=null?p.dotSize:2); setTxt('ctl-dotsize-v',Number(p&&p.dotSize!=null?p.dotSize:2).toFixed(1));
+  setVal('ctl-dotgap',p&&p.dotGap!=null?p.dotGap:5); setTxt('ctl-dotgap-v',Number(p&&p.dotGap!=null?p.dotGap:5).toFixed(1));
+  setVal('ctl-density',p&&p.stippleDensity!=null?p.stippleDensity:.12); setTxt('ctl-density-v',Number(p&&p.stippleDensity!=null?p.stippleDensity:.12).toFixed(2));
+  setVal('ctl-pixelsize',p&&p.pixelSize!=null?p.pixelSize:4); setTxt('ctl-pixelsize-v',Number(p&&p.pixelSize!=null?p.pixelSize:4).toFixed(1));
+  setVal('ctl-rays',p&&p.radialRays!=null?p.radialRays:36); setTxt('ctl-rays-v',String(Math.round(p&&p.radialRays!=null?p.radialRays:36)));
+  setVal('ctl-waveamp',p&&p.waveAmp!=null?p.waveAmp:3); setTxt('ctl-waveamp-v',Number(p&&p.waveAmp!=null?p.waveAmp:3).toFixed(1));
+  setVal('ctl-wavefreq',p&&p.waveFreq!=null?p.waveFreq:.08); setTxt('ctl-wavefreq-v',Number(p&&p.waveFreq!=null?p.waveFreq:.08).toFixed(3));
+  setVal('ctl-noisescale',p&&p.noiseScale!=null?p.noiseScale:.04); setTxt('ctl-noisescale-v',Number(p&&p.noiseScale!=null?p.noiseScale:.04).toFixed(3));
+}
+function applyParamControlsToParams(p){
+  const stroke=document.getElementById('ctl-stroke');
+  const gap=document.getElementById('ctl-gap');
+  const angle=document.getElementById('ctl-angle');
+  const color=document.getElementById('ctl-color');
+  if(!stroke||!gap||!angle||!color) return p;
+  p.strokeWidth=parseFloat(stroke.value);
+  p.lineGap=parseFloat(gap.value);
+  p.lineAngle=parseFloat(angle.value)*Math.PI/180;
+  p.ink=color.value||'#141414';
+  const sv=document.getElementById('ctl-stroke-v');
+  const gv=document.getElementById('ctl-gap-v');
+  const av=document.getElementById('ctl-angle-v');
+  if(sv) sv.textContent=Number(p.strokeWidth).toFixed(1);
+  if(gv) gv.textContent=Number(p.lineGap).toFixed(1);
+  if(av) av.textContent=Math.round(parseFloat(angle.value))+'°';
+  const num=(id,def)=>{const el=document.getElementById(id);return el?parseFloat(el.value):def;};
+  p.melt=num('ctl-melt',p.melt||.5);
+  p.drift=num('ctl-drift',p.drift||1);
+  p.stretchX=num('ctl-stretchx',p.stretchX||1);
+  p.stretchY=num('ctl-stretchy',p.stretchY||1);
+  p.dotSize=num('ctl-dotsize',p.dotSize||2);
+  p.dotGap=num('ctl-dotgap',p.dotGap||5);
+  p.stippleDensity=num('ctl-density',p.stippleDensity||.12);
+  p.pixelSize=num('ctl-pixelsize',p.pixelSize||4);
+  p.radialRays=Math.round(num('ctl-rays',p.radialRays||36));
+  p.waveAmp=num('ctl-waveamp',p.waveAmp||3);
+  p.waveFreq=num('ctl-wavefreq',p.waveFreq||.08);
+  p.noiseScale=num('ctl-noisescale',p.noiseScale||.04);
+  const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setTxt('ctl-melt-v',Number(p.melt).toFixed(2));
+  setTxt('ctl-drift-v',Number(p.drift).toFixed(2));
+  setTxt('ctl-stretchx-v',Number(p.stretchX).toFixed(2));
+  setTxt('ctl-stretchy-v',Number(p.stretchY).toFixed(2));
+  setTxt('ctl-dotsize-v',Number(p.dotSize).toFixed(1));
+  setTxt('ctl-dotgap-v',Number(p.dotGap).toFixed(1));
+  setTxt('ctl-density-v',Number(p.stippleDensity).toFixed(2));
+  setTxt('ctl-pixelsize-v',Number(p.pixelSize).toFixed(1));
+  setTxt('ctl-rays-v',String(Math.round(p.radialRays)));
+  setTxt('ctl-waveamp-v',Number(p.waveAmp).toFixed(1));
+  setTxt('ctl-wavefreq-v',Number(p.waveFreq).toFixed(3));
+  setTxt('ctl-noisescale-v',Number(p.noiseScale).toFixed(3));
+  return p;
+}
+function refreshParamControlVisibility(){
+  const show=id=>{const el=document.getElementById(id);if(el)el.style.display='grid';};
+  const hide=id=>{const el=document.getElementById(id);if(el)el.style.display='none';};
+  ['row-stroke','row-gap','row-angle','row-melt','row-drift','row-stretchx','row-stretchy','row-dotsize','row-dotgap','row-density','row-pixelsize','row-rays','row-waveamp','row-wavefreq','row-noisescale'].forEach(hide);
+  // Base controls only when method actually uses them.
+  if(['Concentric','H-Lines','Diagonal','Cross-Hatch','Wave'].includes(panelMethod)) show('row-stroke');
+  if(['Concentric','H-Lines','Diagonal','Cross-Hatch','Wave'].includes(panelMethod)) show('row-gap');
+  if(['Diagonal','Cross-Hatch'].includes(panelMethod)) show('row-angle');
+  if(panelTx==='Melt') show('row-melt');
+  if(panelTx==='Explode'||panelTx==='Unfold') show('row-drift');
+  if(panelTx==='Stretch'){show('row-stretchx');show('row-stretchy');}
+  if(panelMethod==='Dots'){show('row-dotsize');show('row-dotgap');}
+  if(panelMethod==='Stipple'){show('row-dotsize');show('row-density');}
+  if(panelMethod==='Pixel Grid') show('row-pixelsize');
+  if(panelMethod==='Radial') show('row-rays');
+  if(panelMethod==='Wave'){show('row-waveamp');show('row-wavefreq');}
+  if(panelMethod==='Noise') show('row-noisescale');
+}
+function bindParamControls(){
+  const ids=['ctl-stroke','ctl-gap','ctl-angle','ctl-color','ctl-melt','ctl-drift','ctl-stretchx','ctl-stretchy','ctl-dotsize','ctl-dotgap','ctl-density','ctl-pixelsize','ctl-rays','ctl-waveamp','ctl-wavefreq','ctl-noisescale'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input',()=>livePreview());
+  });
+}
+
+function buildPanelPills(){
+  const txC=document.getElementById('tx-pills'); txC.innerHTML='';
+  for(const o of TRANSFORM_OPTIONS){
+    const p=document.createElement('button'); p.type='button'; p.className='pill';
+    p.textContent=o.label; p.title=o.title; p.dataset.txId=o.id;
+    p.addEventListener('click',()=>{
+      panelTx=o.id;
+      txC.querySelectorAll('.pill').forEach(q=>q.classList.toggle('selected',q.dataset.txId===o.id));
+      refreshParamControlVisibility();
+      livePreview();
+    });
+    txC.appendChild(p);
+  }
+  const mC=document.getElementById('method-pills'); mC.innerHTML='';
+  for(const o of METHOD_OPTIONS){
+    const p=document.createElement('button'); p.type='button'; p.className='pill';
+    p.textContent=o.label; p.title=o.title; p.dataset.mthId=o.id;
+    p.addEventListener('click',()=>{
+      panelMethod=o.id;
+      mC.querySelectorAll('.pill').forEach(q=>q.classList.toggle('selected',q.dataset.mthId===o.id));
+      refreshParamControlVisibility();
+      livePreview();
+    });
+    mC.appendChild(p);
+  }
+}
+
+function livePreview(){
+  if(!customTargetBrick) return;
+  // Keep same params so preview is stable while clicking around
+  if(!customTargetBrick.customStyle || customTargetBrick.customStyle._previewParams===undefined){
+    if(!customTargetBrick._previewParams) customTargetBrick._previewParams=makeParams();
+  }
+  const params=applyParamControlsToParams(customTargetBrick._previewParams||makeParams());
+  customTargetBrick.customStyle={transform:panelTx,method:panelMethod,params:{...params}};
+  customTargetBrick._previewParams=params;
+  renderFrame();
+}
+
+function openCustomPanel(brick,sx,sy){
+  // Save previous style for Reset
+  customPrevStyle=brick.customStyle?{...brick.customStyle,params:{...brick.customStyle.params}}:null;
+  customTargetBrick=brick;
+  // Seed preview params
+  brick._previewParams=brick.customStyle?{...brick.customStyle.params}:makeParams();
+
+  panelTx    =brick.customStyle?brick.customStyle.transform:'Front';
+  panelMethod=brick.customStyle?brick.customStyle.method:'Concentric';
+  syncParamControlsFromParams(brick._previewParams);
+  refreshParamControlVisibility();
+
+  document.querySelectorAll('#tx-pills .pill').forEach(p=>p.classList.toggle('selected',p.dataset.txId===panelTx));
+  document.querySelectorAll('#method-pills .pill').forEach(p=>p.classList.toggle('selected',p.dataset.mthId===panelMethod));
+
+  const panel=document.getElementById('custom-panel');
+  const pw=288, ph=380;
+  let px=sx+14, py=sy-ph/2;
+  if(px+pw>canvas.width) px=sx-pw-14;
+  if(py<8) py=8;
+  if(py+ph>canvas.height) py=canvas.height-ph-8;
+  panel.style.left=px+'px'; panel.style.top=py+'px';
+  panel.classList.add('visible');
+  // Immediately show preview of current state
+  livePreview();
+}
+
+function closeCustomPanel(confirm){
+  if(!confirm && customTargetBrick){
+    // ESC or close-x: revert to previous style
+    customTargetBrick.customStyle=customPrevStyle;
+    customTargetBrick._previewParams=undefined;
+    renderFrame();
+  } else if(customTargetBrick){
+    // Confirmed (click outside or Done): commit
+    undoStack.push(snapshot());
+    customTargetBrick._previewParams=undefined;
+    updateUndoButton();
+    renderFrame();
+  }
+  document.getElementById('custom-panel').classList.remove('visible');
+  customTargetBrick=null; customPrevStyle=null;
+}
+
+document.getElementById('panel-close').addEventListener('click',()=>closeCustomPanel(false));
+
+// "Reset" button — clear custom style from this brick
+document.getElementById('panel-clear').addEventListener('click',()=>{
+  if(!customTargetBrick) return;
+  customTargetBrick.customStyle=null;
+  customTargetBrick._previewParams=undefined;
+  closeCustomPanel(true);
+});
+
+// "Random" button — randomize tx+method and live-preview
+document.getElementById('panel-random').addEventListener('click',()=>{
+  panelTx=rndItem(ALL_TX); panelMethod=rndItem(ALL_MTH);
+  if(customTargetBrick) customTargetBrick._previewParams=makeParams();
+  if(customTargetBrick) syncParamControlsFromParams(customTargetBrick._previewParams);
+  refreshParamControlVisibility();
+  document.querySelectorAll('#tx-pills .pill').forEach(p=>p.classList.toggle('selected',p.dataset.txId===panelTx));
+  document.querySelectorAll('#method-pills .pill').forEach(p=>p.classList.toggle('selected',p.dataset.mthId===panelMethod));
+  livePreview();
+});
+
+// "Apply" → Done: commit current preview
+document.getElementById('panel-apply').addEventListener('click',()=>closeCustomPanel(true));
+
+// Confirm on canvas mousedown (handled in drag section via closeCustomPanel(true))
+
+// ════════════════════════════════════════════════════════════
+//  DRAG
+// ════════════════════════════════════════════════════════════
+function getBrickAt(ox,oy){
+  for(let i=bricks.length-1;i>=0;i--){
+    const b=bricks[i];
+    if(hitTest(ox,oy,b.tx,b.ty,b.view,b.rotated,b.size,b.depth)) return {b,i};
+  }
+  return null;
+}
+function clearSelection(){ selectedBricks.clear(); }
+function toggleSelection(b){ if(selectedBricks.has(b)) selectedBricks.delete(b); else selectedBricks.add(b); }
+function canRotateBrick(b){ return !!b&&b.view==='front'; }
+function rotateBricksAllowed(list){
+  const arr=(list||[]).filter(canRotateBrick);
+  if(!arr.length) return false;
+  for(const b of arr) b.rotated=!b.rotated;
+  return true;
+}
+function selectGroupOf(b){
+  if(!b||!b.groupId){ selectedBricks.add(b); return; }
+  for(const x of bricks) if(x.groupId===b.groupId) selectedBricks.add(x);
+}
+function selectionBounds(){
+  const arr=[...selectedBricks];
+  if(!arr.length) return null;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const b of arr){
+    const bd=getBounds(b.tx,b.ty,b.view,b.rotated,b.size);
+    x0=Math.min(x0,bd.x0); y0=Math.min(y0,bd.y0); x1=Math.max(x1,bd.x1); y1=Math.max(y1,bd.y1);
+  }
+  return {x0,y0,x1,y1};
+}
+function rotateSelection(){
+  if(!selectedBricks.size) return;
+  const rotatable=[...selectedBricks].filter(canRotateBrick);
+  if(!rotatable.length) return;
+  undoStack.push(snapshot());
+  rotateBricksAllowed(rotatable);
+  updateUndoButton(); renderFrame();
+}
+function applyMarqueeSelection(additive){
+  if(!marquee) return;
+  const x0=Math.min(marquee.x0,marquee.x1),y0=Math.min(marquee.y0,marquee.y1),x1=Math.max(marquee.x0,marquee.x1),y1=Math.max(marquee.y0,marquee.y1);
+  if(!additive) clearSelection();
+  for(const b of bricks){
+    const bd=getBounds(b.tx,b.ty,b.view,b.rotated,b.size);
+    if(marqueeMode==='contain'){
+      if(bd.x0>=x0&&bd.y0>=y0&&bd.x1<=x1&&bd.y1<=y1) selectedBricks.add(b);
+    }else{
+      const intersects=!(bd.x1<x0||bd.x0>x1||bd.y1<y0||bd.y0>y1);
+      if(intersects) selectedBricks.add(b);
+    }
+  }
+}
+// Bricks that were snapped to another brick need more force to detach
+let _dragCandidate=null,_dragStartX=0,_dragStartY=0;
+const DRAG_THRESHOLD=4;      // px before drag begins (free bricks)
+const DETACH_THRESHOLD=14;   // px before snapped brick detaches
+
+canvas.addEventListener('mousedown',e=>{
+  if(phase!=='holding') return;
+  const{ox,oy}=canvasXY(e);
+  if(document.getElementById('custom-panel').classList.contains('visible')){closeCustomPanel(true);return;}
+  const hit=getBrickAt(ox,oy);
+  if(hit){
+    const {b,i}=hit;
+    if(e.shiftKey){
+      toggleSelection(b);
+  renderFrame();
+      return;
+    }
+    if(!selectedBricks.has(b)) { clearSelection(); selectGroupOf(b); }
+    const movingSet=[...selectedBricks];
+    if(movingSet.length>1){
+      preDragSnapshot=snapshot();
+      groupDrag={
+        anchor:b,start:{x:ox,y:oy},origin:{tx:b.tx,ty:b.ty},
+        members:movingSet.map(m=>({b:m,dx:m.tx-b.tx,dy:m.ty-b.ty})),
+        snapped:(b.layer||0)>0
+      };
+      _dragStartX=e.clientX; _dragStartY=e.clientY;
+      return;
+    }
+    // single brick drag candidate
+    _dragCandidate={b,i,ox,oy,snapped:(b.layer||0)>0};
+    _dragStartX=e.clientX;_dragStartY=e.clientY;
+  } else {
+    // start marquee selection on empty space
+    marquee={x0:ox,y0:oy,x1:ox,y1:oy,active:true,additive:e.shiftKey};
+    if(!e.shiftKey) clearSelection();
+    renderFrame();
+  }
+});
+
+function _beginDrag(candidate){
+  const{b,i,ox,oy}=candidate;
+  _dragCandidate=null;
+  _dragOrigin={tx:b.tx,ty:b.ty,layer:b.layer||0};
+  preDragSnapshot=snapshot();dragBrick=b;dragOffX=ox-b.tx;dragOffY=oy-b.ty;
+  canvas.classList.add('dragging');bricks.splice(i,1);bricks.push(dragBrick);
+  // Build background cache
+  const W=canvas.width,H=canvas.height;
+  const bgBuf=new Uint8ClampedArray(W*H*4);bgBuf.fill(255);
+  const restSorted=bricks.filter(x=>x!==dragBrick).sort((a,c)=>(a.layer||0)-(c.layer||0));
+  for(const rb of restSorted) if(!rb.customStyle) renderBrickToBuf(bgBuf,W,H,rb,rb.tx,rb.ty,20);
+  const bgOC=document.createElement('canvas');bgOC.width=W;bgOC.height=H;
+  const bgCtx=bgOC.getContext('2d');
+  const bgID=bgCtx.createImageData(W,H);bgID.data.set(bgBuf);bgCtx.putImageData(bgID,0,0);
+  for(const rb of restSorted){
+    if(!rb.customStyle) continue;
+    const bd=getBounds(rb.tx,rb.ty,rb.view,rb.rotated,rb.size);
+    bgCtx.fillStyle='#fff';bgCtx.fillRect(bd.x0-8,bd.y0-8,(bd.x1-bd.x0)+16,(bd.y1-bd.y0)+16);
+    renderCustomBrick(bgCtx,rb.tx,rb.ty,rb.customStyle,28/16,rb.view,rb.rotated,rb.size);
+  }
+  _bgCache=bgCtx.getImageData(0,0,W,H).data;
+  renderFrame();
+}
+
+window.addEventListener('mousemove',e=>{
+  if(marquee&&marquee.active){
+    const {ox,oy}=canvasXY(e);
+    marquee.x1=ox; marquee.y1=oy;
+    queueRender();
+    return;
+  }
+  if(groupDrag){
+    const dx=e.clientX-_dragStartX,dy=e.clientY-_dragStartY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const threshold=groupDrag.snapped?DETACH_THRESHOLD:DRAG_THRESHOLD;
+    if(dist<threshold) return;
+    const {ox,oy}=canvasXY(e);
+    // Use drag-start anchor origin to avoid cumulative drift/fly-away.
+    const rawX=ox-(groupDrag.start.x-groupDrag.origin.tx);
+    const rawY=oy-(groupDrag.start.y-groupDrag.origin.ty);
+    // Reuse single-brick snap logic by temporarily treating anchor as dragBrick.
+    const prevDragBrick=dragBrick;
+    dragBrick=groupDrag.anchor;
+    const snap=computeSnapTarget(rawX,rawY);
+    dragBrick=prevDragBrick;
+    _lastSnap=snap||null;
+    let tx=snap?snap.x:rawX;
+    let ty=snap?((snap.dir==='h'&&snap.target)?snap.target.ty:snap.y):rawY;
+    if(!isGroupPlacementValid(groupDrag,tx,ty)){
+      tx=rawX; ty=rawY; _lastSnap=null;
+    }
+    groupDrag.anchor.tx=lerp(groupDrag.anchor.tx,tx,snap?0.34:0.55);
+    groupDrag.anchor.ty=lerp(groupDrag.anchor.ty,ty,snap?0.34:0.55);
+    if(Math.abs(groupDrag.anchor.tx-tx)<0.25) groupDrag.anchor.tx=tx;
+    if(Math.abs(groupDrag.anchor.ty-ty)<0.25) groupDrag.anchor.ty=ty;
+    const ax=groupDrag.anchor.tx;
+    const ay=groupDrag.anchor.ty;
+    for(const m of groupDrag.members){
+      m.b.tx=ax+m.dx; m.b.ty=ay+m.dy; m.b.x=m.b.tx; m.b.y=m.b.ty;
+    }
+    // Keep grouped bricks parallel in real time, not only on mouseup.
+    normalizeParallelRows(groupDrag.members.map(m=>m.b));
+    queueRender();
+    return;
+  }
+  if(_dragCandidate&&!dragBrick){
+    const dx=e.clientX-_dragStartX,dy=e.clientY-_dragStartY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const threshold=_dragCandidate.snapped?DETACH_THRESHOLD:DRAG_THRESHOLD;
+    if(dist>=threshold) _beginDrag(_dragCandidate);
+    return;
+  }
+  if(!dragBrick) return;
+  const{ox,oy}=canvasXY(e);
+  const rawX=ox-dragOffX,rawY=oy-dragOffY;
+  const snap=computeSnapTarget(rawX,rawY);
+  _lastSnap=snap||null;
+  snapTarget=snap?snap.target:null;
+  if(snap){
+    const targetY=(snap.dir==='h'&&snap.target)?snap.target.ty:snap.y;
+    dragBrick.tx=lerp(dragBrick.tx,snap.x,0.38);
+    dragBrick.ty=lerp(dragBrick.ty,targetY,0.38);
+    if(Math.abs(dragBrick.tx-snap.x)<0.25) dragBrick.tx=snap.x;
+    if(Math.abs(dragBrick.ty-targetY)<0.25) dragBrick.ty=targetY;
+    if(snap.dir==='v'){
+      dragBrick.layer=getSupportedLayerAt(dragBrick,dragBrick.tx,dragBrick.ty);
+    } else if(snap.target){
+      dragBrick.layer=snap.target.layer||0;
+    }
+    dragBrick.x=dragBrick.tx; dragBrick.y=dragBrick.ty;
+  }else{
+    dragBrick.x=dragBrick.tx=rawX;
+    dragBrick.y=dragBrick.ty=rawY;
+  }
+  queueRender();
+});
+window.addEventListener('mouseup',()=>{
+  if(marquee&&marquee.active){
+    marquee.active=false;
+    applyMarqueeSelection(marquee.additive);
+    marquee=null;
+    renderFrame();
+    return;
+  }
+  if(groupDrag){
+    const members=groupDrag.members.map(m=>m.b);
+    const memberSet=new Set(members);
+    const finalSnap=_lastSnap;
+    // Lock group to final snap point like single-brick finalize.
+    if(finalSnap){
+      const anchor=groupDrag.anchor;
+      const finalX=finalSnap.x;
+      const finalY=(finalSnap.dir==='h'&&finalSnap.target)?finalSnap.target.ty:finalSnap.y;
+      const dx=finalX-anchor.tx,dy=finalY-anchor.ty;
+      for(const b of members){ b.tx=b.x=b.tx+dx; b.ty=b.y=b.ty+dy; }
+    }
+    // Overlap guard (group vs non-group), same spirit as single brick logic.
+    const overlapsAny=members.some(mb=>{
+      const hw=mb.rotated?BH/2:brickW(mb.size)/2,hh=BH/2;
+      return bricks.some(ob=>{
+        if(memberSet.has(ob)) return false;
+        const bw=ob.rotated?BH/2:brickW(ob.size)/2,bh=BH/2;
+        const xOver=Math.abs(mb.tx-ob.tx)<(hw+bw)*0.85;
+        const yOver=Math.abs(mb.ty-ob.ty)<(hh+bh)*0.85;
+        return xOver&&yOver;
+      });
+    });
+    if(overlapsAny&&preDragSnapshot){
+      applySnapshot(preDragSnapshot);
+      preDragSnapshot=null;
+      groupDrag=null; _lastSnap=null; snapTarget=null; _bgCache=null;
+      renderFrame();
+      return;
+    }
+    if(!finalSnap){
+      for(const b of members){
+        const prevDrag=dragBrick;
+        dragBrick=b;
+        snapToGrid();
+        dragBrick=prevDrag;
+      }
+    }
+    enforceMovedBricksEmbedding(members);
+    quantizeBrickPositions(members);
+    recomputeFrontLayersBySupport();
+    if(preDragSnapshot){
+      const cur=snapshot();
+      let moved=false;
+      for(let i=0;i<cur.length;i++){
+        if(cur[i].tx!==preDragSnapshot[i].tx||cur[i].ty!==preDragSnapshot[i].ty){ moved=true; break; }
+      }
+      if(moved) undoStack.push(preDragSnapshot);
+      preDragSnapshot=null;
+      updateUndoButton();
+    }
+    normalizeParallelRows(members);
+    normalizeParallelRowsGlobal();
+    // normalizeParallelRows/snapToGrid can change ty after layer was set — re-sync layers once.
+    recomputeFrontLayersBySupport();
+    groupDrag=null; _lastSnap=null; snapTarget=null;
+    renderFrame();
+    return;
+  }
+  _dragCandidate=null;
+  if(!dragBrick) return;
+  const finalSnap=_lastSnap;
+  _lastSnap=null;
+  if(finalSnap){
+    dragBrick.tx=dragBrick.x=finalSnap.x;
+    if(finalSnap.dir==='h'){
+      dragBrick.ty=dragBrick.y=finalSnap.target.ty;
+    } else {
+      dragBrick.ty=dragBrick.y=finalSnap.y;
+    }
+  }
+  const snappedTarget=finalSnap?finalSnap.target:null;
+  snapTarget=null;canvas.classList.remove('dragging');
+
+  // ── Overlap check: if brick lands on top of another, return to pre-drag position ──
+  const overlapping=hasBodyOverlapAt(dragBrick,dragBrick.tx,dragBrick.ty);
+
+  if(overlapping&&preDragSnapshot){
+    // Restore dragged brick to its own original position
+    if(_dragOrigin){
+      dragBrick.tx=dragBrick.x=_dragOrigin.tx;
+      dragBrick.ty=dragBrick.y=_dragOrigin.ty;
+      dragBrick.layer=_dragOrigin.layer||0;
+    }
+    preDragSnapshot=null;
+    _dragOrigin=null;
+    // Flash hint message
+    const hint=document.getElementById('status-hint');
+    const prev=hint.textContent;
+    hint.textContent='bricks can\'t overlap — returned to original position';
+    hint.style.color='#888';
+    setTimeout(()=>{hint.textContent=prev;},2000);
+    dragBrick=null;_bgCache=null;renderFrame();updateUndoButton();
+    return;
+  }
+
+  const rollbackSnapshot=preDragSnapshot;
+  const rollbackOrigin=_dragOrigin;
+  preDragSnapshot=null;
+  if(finalSnap&&finalSnap.dir==='h'){
+    dragBrick.layer=snappedTarget.layer||0;
+    dragBrick.ty=dragBrick.y=snappedTarget.ty; // force exact same-row alignment
+  } else if(snappedTarget){
+    dragBrick.layer=getSupportedLayerAt(dragBrick,dragBrick.tx,dragBrick.ty);
+  } else {
+    dragBrick.layer=computeLayerAtPosition(dragBrick.tx,dragBrick.ty,dragBrick.view,dragBrick.rotated,dragBrick.size);
+  }
+  if((dragBrick.layer||0)>0&&!hasStudSupportAt(dragBrick,dragBrick.tx,dragBrick.ty)){
+    if(finalSnap&&finalSnap.dir==='v'&&rollbackSnapshot){
+      // Vertical stud lock should be physically valid; if not, rollback.
+      if(rollbackOrigin){
+        dragBrick.tx=dragBrick.x=rollbackOrigin.tx;
+        dragBrick.ty=dragBrick.y=rollbackOrigin.ty;
+        dragBrick.layer=rollbackOrigin.layer||0;
+      }
+      const hint=document.getElementById('status-hint');
+      const prev=hint.textContent;
+      hint.textContent='invalid stud lock — returned to supported position';
+      hint.style.color='#888';
+      setTimeout(()=>{hint.textContent=prev;},1800);
+      dragBrick=null;_dragOrigin=null;_bgCache=null;renderFrame();updateUndoButton();
+      return;
+    }
+    // Free drag without support: drop to base layer instead of blocking movement.
+    dragBrick.layer=0;
+  }
+  if(rollbackOrigin){
+    if(dragBrick.tx!==rollbackOrigin.tx||dragBrick.ty!==rollbackOrigin.ty||((dragBrick.layer||0)!==(rollbackOrigin.layer||0))) undoStack.push(rollbackSnapshot);
+  }
+  enforceMovedBricksEmbedding([dragBrick]);
+  quantizeBrickPositions([dragBrick]);
+  recomputeFrontLayersBySupport();
+  if(!snappedTarget) snapToGrid();
+  normalizeParallelRows([dragBrick,...bricks.filter(b=>b!==dragBrick&&(b.layer||0)===(dragBrick.layer||0)&&Math.abs(b.ty-dragBrick.ty)<BSTK*0.2)]);
+  normalizeParallelRowsGlobal();
+  // Row alignment / grid snap run after recomputeFrontLayersBySupport — refresh layers from final ty.
+  recomputeFrontLayersBySupport();
+  dragBrick=null;_dragOrigin=null;_bgCache=null;renderFrame();updateUndoButton();
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+});
+canvas.addEventListener('touchstart',e=>{
+  if(viewMode==='2d'&&e.touches.length===2){
+  e.preventDefault();
+    const t1=e.touches[0],t2=e.touches[1];
+    const cx=(t1.clientX+t2.clientX)/2, cy=(t1.clientY+t2.clientY)/2;
+    touchGesture={
+      dist:Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY),
+      ang:Math.atan2(t2.clientY-t1.clientY,t2.clientX-t1.clientX),
+      cx,cy,
+      snap:snapshot()
+    };
+    return;
+  }
+  if(touchGesture) return;
+  e.preventDefault();const t=e.touches[0];
+  canvas.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY}));
+},{passive:false});
+window.addEventListener('touchmove',e=>{
+  if(touchGesture&&viewMode==='2d'&&e.touches.length===2){
+  e.preventDefault();
+    const t1=e.touches[0],t2=e.touches[1];
+    const cx=(t1.clientX+t2.clientX)/2, cy=(t1.clientY+t2.clientY)/2;
+    const dist=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+    const ang=Math.atan2(t2.clientY-t1.clientY,t2.clientX-t1.clientX);
+    const s=dist/Math.max(1,touchGesture.dist);
+    const da=ang-touchGesture.ang;
+    const c=canvas.getBoundingClientRect();
+    const px=cx-c.left, py=cy-c.top;
+    for(let i=0;i<bricks.length;i++){
+      const o=touchGesture.snap[i], b=bricks[i];
+      const dx=o.tx-px, dy=o.ty-py;
+      const rx=dx*Math.cos(da)-dy*Math.sin(da);
+      const ry=dx*Math.sin(da)+dy*Math.cos(da);
+      b.tx=b.x=px+rx*s; b.ty=b.y=py+ry*s;
+    }
+    queueRender();
+    return;
+  }
+  if(touchGesture) return;
+  e.preventDefault();const t=e.touches[0];window.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}));
+},{passive:false});
+window.addEventListener('touchend',e=>{
+  if(touchGesture&&e.touches.length<2){
+    touchGesture=null;
+    quantizeBrickPositions(bricks);
+    renderFrame();
+  }
+  if(e.touches.length===0) window.dispatchEvent(new MouseEvent('mouseup'));
+});
+
+canvas.addEventListener('dblclick',e=>{
+  if(phase!=='holding') return;
+  const{ox,oy}=canvasXY(e);
+  for(let i=bricks.length-1;i>=0;i--){
+    const b=bricks[i];
+    if(hitTest(ox,oy,b.tx,b.ty,b.view,b.rotated,b.size,b.depth)){
+      if(e.shiftKey){
+        openCustomPanel(b,ox,oy);
+      } else {
+        const pool=(selectedBricks.has(b)&&selectedBricks.size>1)?[...selectedBricks]:[b];
+        const rotatable=pool.filter(canRotateBrick);
+        if(!rotatable.length){ e.preventDefault(); break; }
+        undoStack.push(snapshot());
+        rotateBricksAllowed(rotatable);
+        renderFrame();
+        updateUndoButton();
+      }
+      e.preventDefault();
+      break;
+    }
+  }
+});
+
+// ── Right-click context menu ──
+(function(){
+  const menu=document.getElementById('brick-ctx-menu');
+  let ctxBrick=null,ctxOX=0,ctxOY=0;
+
+  function closeCtx(){menu.classList.remove('visible');ctxBrick=null;}
+
+  canvas.addEventListener('contextmenu',e=>{
+    e.preventDefault();
+    if(phase!=='holding') return;
+    const{ox,oy}=canvasXY(e);
+    for(let i=bricks.length-1;i>=0;i--){
+      const b=bricks[i];
+      if(hitTest(ox,oy,b.tx,b.ty,b.view,b.rotated,b.size,b.depth)){
+        ctxBrick=b; ctxOX=ox; ctxOY=oy;
+        document.getElementById('ctx-rotate').disabled=!canRotateFromCtx(b);
+        // Position near cursor, keep within viewport
+        const vw=window.innerWidth,vh=window.innerHeight;
+        const mw=130,mh=72;
+        const left=Math.min(e.clientX+2,vw-mw-8);
+        const top=Math.min(e.clientY+2,vh-mh-8);
+        menu.style.left=left+'px';
+        menu.style.top=top+'px';
+        menu.classList.add('visible');
+        return;
+      }
+    }
+    closeCtx();
+  });
+
+  document.getElementById('ctx-rotate').addEventListener('click',()=>{
+    if(!ctxBrick||!canRotateFromCtx(ctxBrick)) return;
+    const pool=(selectedBricks.has(ctxBrick)&&selectedBricks.size>1)?[...selectedBricks]:[ctxBrick];
+    const rotatable=pool.filter(canRotateBrick);
+    if(!rotatable.length) return;
+    undoStack.push(snapshot());
+    rotateBricksAllowed(rotatable);
+    renderFrame(); updateUndoButton();
+    closeCtx();
+  });
+
+  document.getElementById('ctx-customize').addEventListener('click',()=>{
+    if(!ctxBrick) return;
+    openCustomPanel(ctxBrick,ctxOX,ctxOY);
+    closeCtx();
+  });
+
+  // Close on any click outside
+  document.addEventListener('click',e=>{
+    if(!menu.contains(e.target)) closeCtx();
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape') closeCtx();
+  });
+})();
+
+function canvasXY(e){const r=canvas.getBoundingClientRect();return{ox:e.clientX-r.left,oy:e.clientY-r.top};}
+function hitTest(mx,my,bx,by,view,rotated,size,depth){return getSDF(mx,my,bx,by,view,rotated,size,depth)<=2;}
+function canRotateFromCtx(target){
+  if(!target) return false;
+  if(selectedBricks.has(target)&&selectedBricks.size>1) return [...selectedBricks].some(canRotateBrick);
+  return canRotateBrick(target);
+}
+function getStudXsForBrickAt(brick,cx){
+  if(!brick||brick.view!=='front') return [];
+  const n=brick.rotated?1:(brick.size||4);
+  const w=brickW(brick.size);
+  if(brick.rotated) return [cx];
+  return Array.from({length:n},(_,i)=>cx-w/2+U*(i+.5));
+}
+function hasStudSupportAt(brick,tx,ty,pool){
+  const list=pool||bricks;
+  if(!brick||brick.view!=='front') return true;
+  const myStudXs=getStudXsForBrickAt(brick,tx);
+  if(!myStudXs.length) return true;
+  const xTol=U*0.35,supportY=ty+BSTK;
+  let supported=0;
+  for(const b of list){
+    if(b===brick||b.view!=='front') continue;
+    if(Math.abs(b.ty-supportY)>STUD_STACK_Y_TOL) continue;
+    const lowerStudXs=getStudXsForBrickAt(b,b.tx);
+    for(const sx of myStudXs){
+      if(lowerStudXs.some(lsx=>Math.abs(lsx-sx)<=xTol)){ supported++; break; }
+    }
+  }
+  return supported>0;
+}
+function hasBodyOverlapAt(brick,tx,ty,ignoreSet){
+  const hw=brick.rotated?BH/2:brickW(brick.size)/2, hh=BH/2;
+  for(const b of bricks){
+    if(b===brick) continue;
+    if(ignoreSet&&ignoreSet.has&&ignoreSet.has(b)) continue;
+    const bw=b.rotated?BH/2:brickW(b.size)/2, bh=BH/2;
+    if(Math.abs(tx-b.tx)<(hw+bw)*0.85 && Math.abs(ty-b.ty)<(hh+bh)*0.85) return true;
+  }
+  return false;
+}
+function getSupportedLayerAt(brick,tx,ty,pool){
+  const list=pool||bricks;
+  if(!brick||brick.view!=='front') return 0;
+  const myStudXs=getStudXsForBrickAt(brick,tx);
+  if(!myStudXs.length) return 0;
+  const xTol=U*0.35,supportY=ty+BSTK;
+  let best=-1;
+  for(const b of list){
+    if(b===brick||b.view!=='front') continue;
+    if(Math.abs(b.ty-supportY)>STUD_STACK_Y_TOL) continue;
+    const lowerStudXs=getStudXsForBrickAt(b,b.tx);
+    let aligned=false;
+    for(const sx of myStudXs){
+      if(lowerStudXs.some(lsx=>Math.abs(lsx-sx)<=xTol)){ aligned=true; break; }
+    }
+    if(aligned) best=Math.max(best,b.layer||0);
+  }
+  return best>=0?best+1:0;
+}
+function computeSnapTarget(rawX,rawY){
+  if(!dragBrick||dragBrick.view!=='front') return null;
+
+  const dn=dragBrick.rotated?1:(dragBrick.size||4);
+  const dw=brickW(dragBrick.size);
+  function dragStudXs(cx){
+    if(dragBrick.rotated) return [cx];
+    return Array.from({length:dn},(_,i)=>cx-dw/2+U*(i+.5));
+  }
+
+  let best=Infinity, bestSnap=null;
+
+  for(const b of bricks){
+    if(b===dragBrick||b.view!=='front') continue;
+
+    const bn=b.rotated?1:(b.size||4);
+    const bw=brickW(b.size);
+    const targetStudXs=b.rotated?[b.tx]:Array.from({length:bn},(_,i)=>b.tx-bw/2+U*(i+.5));
+
+    // ── VERTICAL snap (dragBrick on top of b) ──
+    for(const tsx of targetStudXs){
+      for(let di=0;di<dn;di++){
+        // Position dragBrick so that its di-th stud aligns with tsx
+        const myStudOffsetX = dragBrick.rotated ? 0 : (-dw/2 + U*(di+0.5));
+        const candidateX = tsx - myStudOffsetX;
+      const candidateY=b.ty-BSTK;
+        const dsx=dragStudXs(candidateX);
+        const overlap=dsx.filter(dx=>targetStudXs.some(tx=>Math.abs(dx-tx)<U*0.35)).length;
+        if(overlap===0) continue;
+        if(hasBodyOverlapAt(dragBrick,candidateX,candidateY)) continue;
+        if(!hasStudSupportAt(dragBrick,candidateX,candidateY)) continue;
+        const dist=Math.hypot(rawX-candidateX,rawY-candidateY);
+        const score=dist-overlap*U*0.5;
+        if(dist<SNAP_RADIUS*1.08&&score<best){
+          best=score;
+          bestSnap={target:b,x:candidateX,y:candidateY,overlap,dir:'v'};
+        }
+      }
+    }
+
+    // ── HORIZONTAL snap (side by side, same row) ──
+    // candidateY = b.ty exactly (match the row of the target brick)
+    if(Math.abs(rawY-b.ty)<BSTK*0.75){
+      const candidateY=b.ty;
+      const candidateXL=b.tx-bw/2-dw/2;
+      const candidateXR=b.tx+bw/2+dw/2;
+      for(const candidateX of [candidateXL,candidateXR]){
+        if(hasBodyOverlapAt(dragBrick,candidateX,candidateY)) continue;
+        const dist=Math.hypot(rawX-candidateX,rawY-candidateY);
+        if(dist<SNAP_RADIUS*1.5&&dist<best){
+          best=dist;
+          bestSnap={target:b,x:candidateX,y:candidateY,overlap:1,dir:'h'};
+        }
+      }
+    }
+  }
+  return bestSnap;
+}
+function isGroupPlacementValid(gd,anchorX,anchorY){
+  if(!gd||!gd.members) return true;
+  const movingSet=new Set(gd.members.map(m=>m.b));
+  for(const m of gd.members){
+    const tx=anchorX+m.dx, ty=anchorY+m.dy;
+    if(hasBodyOverlapAt(m.b,tx,ty,movingSet)) return false;
+  }
+  return true;
+}
+
+function computeLayerAtPosition(tx,ty,view,rotated,size){
+  if(view!=='front') return 0;
+  const hw=rotated?BH/2:brickW(size)/2,hh=BH/2;
+  let maxL=-1;
+  for(const b of bricks){
+    if(b===dragBrick) continue;
+    const bw=b.rotated?BH/2:brickW(b.size)/2,bh=BH/2;
+    if(Math.abs(tx-b.tx)<hw+bw&&Math.abs(ty-b.ty)<hh+bh) maxL=Math.max(maxL,b.layer||0);
+  }
+  return maxL>=0?maxL+1:0;
+}
+
+function snapToGrid(){
+  if(!dragBrick) return;
+  const b=dragBrick;
+  const w=(b.view==='side'||b.rotated)?BH:brickW(b.size);
+  const sx2=Math.round(b.tx/w)*w;
+  if(Math.abs(b.tx-sx2)<12) b.tx=b.x=sx2;
+  if(b.view==='top') return;
+  const myL=b.layer||0;
+  const peers=bricks.filter(ob=>ob!==b&&ob.view==='front'&&(ob.layer||0)===myL);
+  if(peers.length){
+    const tys=peers.map(ob=>ob.ty).sort((a,c)=>a-c);
+    const med=tys[Math.floor(tys.length/2)];
+    if(Math.abs(b.ty-med)<BSTK*0.55) b.ty=b.y=med;
+  } else {
+    let bestDy=Infinity,bestY=b.ty;
+    for(const ob of bricks){
+      if(ob===b) continue;
+      const dy=Math.abs(b.ty-ob.ty);
+      if(dy<BSTK*0.4&&dy<bestDy){bestDy=dy;bestY=ob.ty;}
+    }
+    if(bestDy<BSTK*0.4) b.ty=b.y=bestY;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  SAVE
+// ════════════════════════════════════════════════════════════
+function saveClean(){
+  const oc=document.createElement('canvas');oc.width=canvas.width;oc.height=canvas.height;
+  const oc2=oc.getContext('2d');
+  const W=oc.width,H=oc.height,buf=new Uint8ClampedArray(W*H*4);buf.fill(255);
+  const sorted=bricks.slice().sort((a,b)=>{
+    const ld=(a.layer||0)-(b.layer||0);
+    if(ld!==0) return ld;
+    return (a.ty||0)-(b.ty||0); // same layer: top (smaller ty) first
+  });
+  for(const b of sorted){
+    if(b.customStyle) continue;
+    const bx=b.tx,by=b.ty,iv=Math.max(4.5,6-(b.layer||0)*.35),rw=Math.max(iv*.22,1.2),strokeW=1.0;
+    const covered=getCoveredStudXs(b,bx,by,bricks,true);
+    const visStuds=getStudCenters(bx,by,b.view,b.rotated,b.size,b.depth)
+      .filter(st=>!covered.has(Math.round(st.sx)));
+    const bd=getBounds(bx,by,b.view,b.rotated,b.size,b.depth);
+    const x0=Math.max(0,Math.floor(bd.x0)),x1=Math.min(W-1,Math.ceil(bd.x1));
+    const y0=Math.max(0,Math.floor(bd.y0)),y1=Math.min(H-1,Math.ceil(bd.y1));
+    for(let py=y0;py<=y1;py++){for(let px=x0;px<=x1;px++){
+      const dc=sdfBody(px+.5,py+.5,bx,by,b.view,b.rotated,b.size,b.depth);
+      let df=dc;
+      for(const st of visStuds) df=Math.min(df,sdBox(px+.5,py+.5,st.sx,st.sy,st.hw,st.hh,SR));
+      const i=(py*W+px)*4;
+      if(brickStyle==='outline'||brickStyle==='dashed'){
+        if(dc<=0){
+          buf[i]=buf[i+1]=buf[i+2]=255;
+        }
+      } else {
+        if(dc<=0){buf[i]=buf[i+1]=buf[i+2]=255;if(df<=0&&(Math.abs(df)%iv)<rw)buf[i]=buf[i+1]=buf[i+2]=20;}
+        else if(df<=0){let t=-1;for(const st of visStuds){const nx=(px+.5-st.sx)/st.hw,ny=(py+.5-st.sy)/st.hh,e=nx*nx+ny*ny;if(e<=1){t=Math.max(0,1-e);break;}}
+          if(t>=0)buf[i]=buf[i+1]=buf[i+2]=Math.min(255,Math.round(20+t*42));
+          else if((Math.abs(df)%iv)<rw)buf[i]=buf[i+1]=buf[i+2]=20;
+        }
+      }
+    }}
+    if(brickStyle==='outline'||brickStyle==='dashed') drawBodyEdges(buf,W,H,b,bx,by,20,sorted);
+  }
+  const id=oc2.createImageData(W,H);id.data.set(buf);oc2.putImageData(id,0,0);
+  for(const b of sorted){
+    if(!b.customStyle) continue;
+    const bd=getBounds(b.tx,b.ty,b.view,b.rotated,b.size);
+    const pad=6;
+    const rx=Math.max(0,Math.floor(bd.x0-pad)),ry=Math.max(0,Math.floor(bd.y0-pad));
+    const rw=Math.min(W-rx,Math.ceil(bd.x1-bd.x0+pad*2+1));
+    const rh=Math.min(H-ry,Math.ceil(bd.y1-bd.y0+pad*2+1));
+    if(rw<=0||rh<=0) continue;
+    const off=document.createElement('canvas');off.width=rw;off.height=rh;
+    const octx=off.getContext('2d');
+    octx.fillStyle='#fff';octx.fillRect(0,0,rw,rh);
+    renderCustomBrick(octx,b.tx-rx,b.ty-ry,b.customStyle,28/16,b.view,b.rotated,b.size);
+    const od=octx.getImageData(0,0,rw,rh).data;
+    const md=oc2.getImageData(rx,ry,rw,rh);const md2=md.data;
+    for(let i=0;i<od.length;i+=4){
+      if(od[i]<245||od[i+1]<245||od[i+2]<245){
+        md2[i]=od[i];md2[i+1]=od[i+1];md2[i+2]=od[i+2];md2[i+3]=255;
+      }
+    }
+    oc2.putImageData(md,rx,ry);
+  }
+  drawVectorStudOutlinesOn(oc2,sorted,true,'#141414');
+  const a=document.createElement('a');
+  a.download=currentComp&&currentComp.name==='Alphabet'?'brick_letter_'+(LETTERS[currentLetterIndex]||'A')+'.png':
+    currentComp&&currentComp.name==='Word'?'brick_word_'+currentWord+'.png':
+    currentComp&&currentComp.name==='Imported'?'brick_imported.png':
+    'brick_'+String(resultCount).padStart(3,'0')+'.png';
+  a.href=oc.toDataURL('image/png');a.click();
+}
+
+// ════════════════════════════════════════════════════════════
+//  CONTROLS & KEYBOARD
+// ════════════════════════════════════════════════════════════
+function initAddBrickSpecMenu(){
+  const btn=document.getElementById('btn-add-brick');
+  const menu=document.getElementById('add-brick-menu');
+  if(!btn||!menu||menu.children.length) return;
+  for(const spec of BRICK_ADD_SPECS){
+    const item=document.createElement('button');
+    item.type='button';
+    item.className='btn';
+    item.textContent=spec.label;
+    item.dataset.specId=spec.id;
+    item.addEventListener('click',()=>{
+      addBrickAuto(spec);
+      menu.classList.remove('visible');
+    });
+    menu.appendChild(item);
+  }
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    menu.classList.toggle('visible');
+    document.getElementById('more-menu')?.classList.remove('visible');
+  });
+}
+function addBrickAuto(specOverride){
+  if(phase!=='holding') return;
+  if(typeMode) exitTypeMode();
+  if(document.getElementById('custom-panel').classList.contains('visible')) closeCustomPanel(true);
+  const before=snapshot();
+  const centerY=canvas.height/2;
+  const minCx=Math.round((BW/2+U*2)/U)*U;
+  const maxCx=canvas.width-BW/2-U*2;
+  const spec=specOverride&&typeof specOverride==='object'?specOverride:BRICK_ADD_SPECS[0];
+  const nb={x:minCx,y:centerY,sx:minCx,sy:centerY,tx:minCx,ty:centerY,view:'front',rotated:false,size:spec.size||randUnit(),depth:spec.depth||randDepth(),layer:0,t:1,interval:6,delay:0,customStyle:null};
+  function overlapsAt(tx,ty){
+    const hw=nb.rotated?BH/2:brickW(nb.size)/2,hh=BH/2;
+    return bricks.some(b=>{
+      if(b.view!=='front') return false;
+      const bw=b.rotated?BH/2:brickW(b.size)/2,bh=BH/2;
+      return Math.abs(tx-b.tx)<(hw+bw)*0.85&&Math.abs(ty-b.ty)<(hh+bh)*0.85;
+    });
+  }
+  let placed=false;
+  const frontBricks=bricks.filter(b=>b.view==='front');
+  const groundY=frontBricks.length?Math.max(...frontBricks.map(b=>b.ty))+BSTK:centerY;
+  const scanY=Math.round(groundY/BSTK)*BSTK;
+  const xStep=U;
+  // Spawn on a new bottom row only; scan from left edge inward (not canvas center).
+  for(let k=0;k<220&&!placed;k++){
+    const x=Math.round((minCx+k*xStep)/U)*U;
+    if(x>maxCx) break;
+    if(overlapsAt(x,scanY)) continue;
+    if(hasStudSupportAt(nb,x,scanY)) continue;
+    nb.tx=nb.x=x;
+    nb.ty=nb.y=scanY;
+    nb.layer=0;
+    placed=true;
+  }
+  if(!placed) return;
+  bricks.push(nb);
+  recomputeFrontLayersBySupport();
+  undoStack.push(before);
+  updateUndoButton();
+  renderFrame();
+  if(viewMode==='3d'&&bricksGroup3d) syncBricksTo3D();
+}
+document.getElementById('btn-style').addEventListener('click',()=>{
+  if(typeMode) exitTypeMode();
+  if(document.getElementById('custom-panel').classList.contains('visible')) closeCustomPanel(false);
+  if(bricks.length) undoStack.push(snapshot());
+  styleIndex=(styleIndex+1)%STYLE_PRESETS.length;
+  const preset=STYLE_PRESETS[styleIndex];
+  document.getElementById('btn-style').textContent=preset.label;
+  if(bricks.length){applyStylePreset(preset);updateUndoButton();}
+});
+document.getElementById('btn-group').addEventListener('click',()=>{
+  if(selectedBricks.size<2) return;
+  const gid='g'+(groupCounter++);
+  undoStack.push(snapshot());
+  for(const b of selectedBricks) b.groupId=gid;
+  updateUndoButton(); renderFrame();
+});
+document.getElementById('btn-ungroup').addEventListener('click',()=>{
+  if(!selectedBricks.size) return;
+  undoStack.push(snapshot());
+  for(const b of selectedBricks) b.groupId=null;
+  updateUndoButton(); renderFrame();
+});
+document.getElementById('btn-rotate-sel').addEventListener('click',()=>rotateSelection());
+document.getElementById('btn-select-mode').addEventListener('click',()=>{
+  marqueeMode=(marqueeMode==='contain')?'touch':'contain';
+  document.getElementById('btn-select-mode').textContent=marqueeMode==='contain'?'Sel: Contain':'Sel: Touch';
+});
+document.getElementById('btn-more').addEventListener('click',e=>{
+  e.stopPropagation();
+  document.getElementById('add-brick-menu')?.classList.remove('visible');
+  document.getElementById('more-menu').classList.toggle('visible');
+});
+document.addEventListener('click',e=>{
+  const moreWrap=document.getElementById('more-wrap');
+  const specWrap=document.getElementById('add-brick-wrap');
+  if(moreWrap&&!moreWrap.contains(e.target)) document.getElementById('more-menu').classList.remove('visible');
+  if(specWrap&&!specWrap.contains(e.target)) document.getElementById('add-brick-menu').classList.remove('visible');
+});
+document.getElementById('btn-rotate-sel').addEventListener('click',()=>document.getElementById('more-menu').classList.remove('visible'));
+document.getElementById('btn-select-mode').addEventListener('click',()=>document.getElementById('more-menu').classList.remove('visible'));
+document.getElementById('btn-imported').addEventListener('click',()=>{ enterImportedModeBlank(); });
+document.getElementById('label-c').addEventListener('click',()=>{
+  if(!document.getElementById('label-c').classList.contains('is-active')) return;
+  cycleAlphabetPerspective();
+});
+document.getElementById('btn-random').addEventListener('click',()=>{if(phase==='dissolving'||phase==='condensing')return;if(typeMode)exitTypeMode();triggerNext();});
+document.getElementById('btn-letters').addEventListener('click',()=>{
+  if(phase==='dissolving'||phase==='condensing')return;
+  if(phase==='holding'&&currentComp&&currentComp.name==='Alphabet'){startDissolve();return;}
+  currentComp=CARD_A.find(c=>c.name==='Alphabet');currentPersp=CARD_C.find(c=>c.name==='Front View')||CARD_C[0];currentLetterIndex=0;applyCompAndStart();
+});
+document.getElementById('btn-next').addEventListener('click',()=>{
+  if(phase==='holding'&&currentComp&&currentComp.name==='Alphabet'){triggerAlphabetLetter(currentLetterIndex+1);return;}
+  if(phase==='holding')startDissolve();else if(phase==='idle'||phase==='holding')triggerNext();
+});
+document.getElementById('btn-save').addEventListener('click',()=>{if(typeMode)exitTypeMode();saveClean();});
+document.getElementById('btn-share-submit').addEventListener('click',()=>submitLayoutToSharedSpace());
+document.getElementById('library-refresh').addEventListener('click',()=>loadLibrary());
+document.getElementById('library-preview-close').addEventListener('click',closeLibraryPreview);
+document.getElementById('library-preview-overlay').addEventListener('click',e=>{ if(e.target.id==='library-preview-overlay') closeLibraryPreview(); });
+document.getElementById('library-preview-import').addEventListener('click',()=>{ if(_libraryPreviewRow) openLibraryImportToMain(_libraryPreviewRow); });
+document.getElementById('btn-library-toggle').addEventListener('click',()=>{
+  const btn=document.getElementById('btn-library-toggle');
+  const panel=document.getElementById('library-panel');
+  if(!btn||!panel) return;
+  if(phase==='dissolving'||phase==='condensing') return;
+  const open=!panel.classList.contains('library-panel--open');
+  if(open){
+    const alreadyImp=currentComp&&currentComp.name==='Imported';
+    if(!alreadyImp||bricks.length===0){
+      if(!prepareImportedBlankWorkboard()) return;
+      applyImportedEmptyBundleUi();
+      document.getElementById('status-hint').textContent='Blank canvas · Library to import · Add Brick (up to 2x4) to start';
+    }
+    openLibraryPanel();
+  } else {
+    closeLibraryPanel();
+  }
+});
+supabaseClient=initSupabaseClient();
+refreshShareSubmitUi();
+window.replaceBricksFromLayout=replaceBricksFromLayout;
+document.getElementById('btn-reset').addEventListener('click',()=>{if(typeMode)exitTypeMode();resetLayout();});
+document.getElementById('btn-undo').addEventListener('click',()=>{if(typeMode)exitTypeMode();undo();});
+
+// ── Info panel ──
+function toggleInfo(){document.getElementById('info-overlay').classList.toggle('visible');}
+function closeInfo(){document.getElementById('info-overlay').classList.remove('visible');}
+document.getElementById('btn-info').addEventListener('click',toggleInfo);
+document.getElementById('info-close').addEventListener('click',closeInfo);
+document.getElementById('info-overlay').addEventListener('click',e=>{if(e.target.id==='info-overlay')closeInfo();});
+
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='type-input') return;
+  const infoOpen=document.getElementById('info-overlay').classList.contains('visible');
+  if(e.key==='?'||(e.code==='Slash'&&e.shiftKey)||e.key==='F1'){e.preventDefault();toggleInfo();return;}
+  if(e.key==='Escape'&&infoOpen){closeInfo();return;}
+  if(infoOpen) return;
+  if(document.getElementById('library-preview-overlay').classList.contains('visible')){
+    if(e.key==='Escape'){ closeLibraryPreview(); return; }
+  }
+  if(document.getElementById('custom-panel').classList.contains('visible')){if(e.key==='Escape'){closeCustomPanel();return;}}
+  if(phase==='holding'&&currentComp&&currentComp.name==='Alphabet'){
+    if(e.code==='Space'&&!e.shiftKey){e.preventDefault();triggerAlphabetLetter(currentLetterIndex+1);return;}
+    if((e.code==='Space'&&e.shiftKey)||e.code==='ArrowLeft'){e.preventDefault();triggerAlphabetLetter(currentLetterIndex-1);return;}
+    if(e.code==='ArrowRight'){e.preventDefault();triggerAlphabetLetter(currentLetterIndex+1);return;}
+    if(e.key&&e.key.match(/[a-zA-Z]/)&&e.key.length===1&&e.key.toLowerCase()!=='s'){
+      const idx=LETTERS.indexOf(e.key.toUpperCase());if(idx>=0){e.preventDefault();triggerAlphabetLetter(idx);}return;
+    }
+  }
+  // Word mode: Space re-renders same word with new random style/perspective
+  if(e.code==='Space'&&phase==='holding'&&currentComp&&currentComp.name==='Word'){
+    e.preventDefault();
+    // Cycle to next random perspective and re-apply style preset
+    const randPersp=CARD_C[Math.floor(Math.random()*CARD_C.length)];
+    currentPersp=randPersp;
+    styleIndex=(styleIndex+1)%STYLE_PRESETS.length;
+    document.getElementById('btn-style').textContent=STYLE_PRESETS[styleIndex].label;
+    applyCompAndStart();
+    return;
+  }
+  if(e.code==='Space'){e.preventDefault();if(phase==='holding')startDissolve();else if(phase==='idle')triggerNext();}
+  if(e.key==='s'||e.key==='S') saveClean();
+  if(e.key==='t'||e.key==='T'){enterTypeMode();return;}
+  if((e.key==='z'||e.key==='Z')&&(e.ctrlKey||e.metaKey)){e.preventDefault();undo();}
+});
+
+function setStatus(s){
+  const dot=document.getElementById('phase-dot'),text=document.getElementById('status-text'),hint=document.getElementById('status-hint');
+  dot.className='';
+  if(s==='holding'){dot.classList.add('active');text.textContent='holding';
+    if(hint&&viewMode==='2d'){
+      if(currentComp&&currentComp.name==='Alphabet') hint.textContent='← → letter · click perspective name to cycle · 3D to view · brick to annotate · S save';
+      else if(currentComp&&currentComp.name==='Imported'){
+        hint.textContent=bricks.length
+          ? 'Imported layout · Next = new build · Library for more shares'
+          : 'Blank canvas · Library to import · Add Brick (up to 2x4)';
+      }
+      else hint.textContent='drag · dbl-click=rotate · right-click=more';
+    }}
+  if(s==='condensing'){dot.classList.add('active');text.textContent='assembling';}
+  if(s==='dissolving'){dot.classList.add('dissolving');text.textContent='dissolving';}
+  refreshLabelCPerspectiveClickable();
+}
+
+// ── Type mode ──
+function enterTypeMode(){
+  // Type input is a 2D editing mode; never show it together with 3D panels.
+  if(viewMode==='3d') setViewMode('2d');
+  _wordSizingActive=false; _wordSizingText=''; resizeCanvas();
+  applyWordCanvasScale();
+  clearImportedLayoutModeUi();
+  typeMode=true;bricks=[];phase='idle';
+  unhighlight3d();
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(bricksGroup3d){while(bricksGroup3d.children.length)bricksGroup3d.remove(bricksGroup3d.children[0]);}
+  const bar=document.getElementById('type-bar'),input=document.getElementById('type-input');
+  bar.classList.add('visible');input.value='';input.focus();
+  updateTypeSizeUi();
+  document.getElementById('btn-type').classList.add('active');
+  document.getElementById('btn-random').classList.remove('active');
+  document.getElementById('btn-letters').classList.remove('active');
+  document.getElementById('alphabet-panel').classList.remove('visible');
+  document.getElementById('status-hint').textContent='type a word · Enter to build';
+  document.getElementById('label-a').textContent='Word';
+  document.getElementById('label-c').textContent='—';
+  document.getElementById('label-count').textContent='—';
+  refreshLabelCPerspectiveClickable();
+}
+function exitTypeMode(){
+  typeMode=false;
+  document.getElementById('type-bar').classList.remove('visible');
+  document.getElementById('type-input').blur();
+  document.getElementById('btn-type').classList.remove('active');
+}
+document.getElementById('btn-type').addEventListener('click',()=>{if(typeMode){exitTypeMode();triggerNext();}else enterTypeMode();});document.getElementById('type-input').addEventListener('keydown',e=>{
+  e.stopPropagation();
+  if(e.key==='Enter'){e.preventDefault();const word=e.target.value;exitTypeMode();if(word.trim())triggerWord(word);else triggerNext();}
+  if(e.key==='Escape'){e.preventDefault();exitTypeMode();triggerNext();}
+});
+document.getElementById('type-input').addEventListener('keyup',e=>e.stopPropagation());
+
+function triggerWord(word){
+  if(!word||!word.trim()) return;
+  currentWord=word.trim().toUpperCase().replace(/[^A-Z]/g,'');
+  if(!currentWord.length) return;
+  _wordSizingActive=true; _wordSizingText=currentWord;
+  currentComp={name:'Word',fn:compWord};currentPersp=CARD_C.find(c=>c.name==='Front View')||CARD_C[0];
+  resultCount++;applyCompAndStart();
+}
+document.getElementById('type-size')?.addEventListener('input',e=>{
+  const v=parseFloat(e.target.value);
+  if(!Number.isFinite(v)) return;
+  typeWordScale=Math.max(0.15,Math.min(2.2,v));
+  updateTypeSizeUi();
+  if(_wordSizingActive){
+    resizeCanvas();
+    if(phase==='holding'&&currentComp&&currentComp.name==='Word'){ applyCompAndStart(); }
+    else applyWordCanvasScale();
+  }
+});
+document.getElementById('type-fit')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  const input=document.getElementById('type-input');
+  const src=_wordSizingActive&&currentWord?currentWord:(input?input.value:'');
+  const word=(src||'').trim().toUpperCase().replace(/[^A-Z]/g,'');
+  if(!word.length) return;
+  const main=document.getElementById('main-work');
+  const viewportW=main?main.clientWidth:canvas.width;
+  const baseW=Math.max(1,wordSingleLineWidth(word));
+  const target=(viewportW*0.78)/baseW;
+  typeWordScale=Math.max(0.15,Math.min(2.2,target));
+  updateTypeSizeUi();
+  if(_wordSizingActive&&phase==='holding'&&currentComp&&currentComp.name==='Word') applyCompAndStart();
+  else applyWordCanvasScale();
+});
+
+// ════════════════════════════════════════════════════════════
+//  3D VIEW (Three.js — unchanged from original)
+// ════════════════════════════════════════════════════════════
+const SCALE_2D_TO_3D=1/28;
+let scene3d,camera3d,renderer3d,bricksGroup3d,pipCamera,pipRenderer;
+let orbit={theta:-Math.PI/2,phi:Math.PI/2,radius:20,dragging:false,prevX:0,prevY:0,autoRotate:false,autoRotateSpeed:.004,targetX:0,targetY:0,targetZ:0,baseRadius:14,_startX:0,_startY:0};
+let sceneCenterY3d=0,anim3dId=null;
+let drag3d={active:false,group:null,plane:null,offset:null};
+let orbitTween=null;
+
+function initView3D(){
+  if(scene3d) return;
+  const container=document.getElementById('view-3d');const w=container.clientWidth,h=container.clientHeight;
+  scene3d=new THREE.Scene();scene3d.background=new THREE.Color(0xffffff);
+  camera3d=new THREE.PerspectiveCamera(50,w/h,.1,500);camera3d.position.set(0,12,24);
+  renderer3d=new THREE.WebGLRenderer({antialias:true});renderer3d.setSize(w,h);renderer3d.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer3d.shadowMap.enabled=true;renderer3d.shadowMap.type=THREE.PCFSoftShadowMap;
+  container.appendChild(renderer3d.domElement);
+  const amb=new THREE.AmbientLight(0xffffff,.6);scene3d.add(amb);
+  const dir=new THREE.DirectionalLight(0xffffff,.85);dir.position.set(8,20,10);dir.castShadow=true;
+  dir.shadow.mapSize.width=dir.shadow.mapSize.height=2048;dir.shadow.camera.left=-30;dir.shadow.camera.right=30;
+  dir.shadow.camera.top=30;dir.shadow.camera.bottom=-30;dir.shadow.camera.near=.5;dir.shadow.camera.far=80;dir.shadow.bias=-.001;scene3d.add(dir);
+  const fill=new THREE.DirectionalLight(0xccddff,.25);fill.position.set(-5,5,-8);scene3d.add(fill);
+  const rim=new THREE.DirectionalLight(0x6699cc,.45);rim.position.set(-6,-2,-10);scene3d.add(rim);
+  const rim2=new THREE.DirectionalLight(0x6699cc,.3);rim2.position.set(6,-1,8);scene3d.add(rim2);
+  pipCamera=new THREE.OrthographicCamera(-10,10,7.5,-7.5,.1,200);pipCamera.position.set(0,60,0);pipCamera.lookAt(0,0,0);
+  pipRenderer=new THREE.WebGLRenderer({canvas:document.getElementById('pip-canvas'),antialias:true,alpha:false});
+  pipRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));pipRenderer.setSize(280,210);
+  const gGeo=new THREE.PlaneGeometry(120,120),gMat=new THREE.ShadowMaterial({opacity:.12});
+  const ground=new THREE.Mesh(gGeo,gMat);ground.rotation.x=-Math.PI/2;ground.position.y=-.01;ground.receiveShadow=true;scene3d.add(ground);
+  bricksGroup3d=new THREE.Group();scene3d.add(bricksGroup3d);
+  renderer3d.domElement.addEventListener('mousedown',onOrbitStart);
+  renderer3d.domElement.addEventListener('wheel',onOrbitZoom,{passive:false});
+  window.addEventListener('mousemove',onOrbitMove);window.addEventListener('mouseup',onOrbitEnd);
+  window.addEventListener('resize',onResize3d);
+}
+
+function createBrickMesh3D(brick){
+  const b=brick||{view:'front',rotated:false,size:4,depth:1};
+  const isSide=b.view==='side'||b.rotated;
+  const isTop=b.view==='top'&&!b.rotated;
+  const n=isSide?1:(b.size||4);
+  const d=isSide?1:Math.max(1,b.depth||1);
+  const s=SCALE_2D_TO_3D,W3=BW*s,H3=BH*s;
+  const bodyW=isSide?H3:Math.max(U*s,n*U*s);
+  const bodyH=isTop?Math.max(U*s*0.45,H3*0.45):H3;
+  // Keep stud rows physically supported: if depth has multiple stud rows (e.g. 2x3),
+  // body depth must expand with d*U instead of staying at fixed H3.
+  const bodyD=isSide?H3:Math.max(H3,d*U*s);
+  const bodyGeo=new THREE.BoxGeometry(bodyW,bodyH,bodyD);
+  const body=new THREE.Mesh(bodyGeo,new THREE.MeshLambertMaterial({color:0x2a2a2a,flatShading:true}));
+  body.castShadow=true;body.receiveShadow=true;body.position.y=bodyH/2;
+  const group=new THREE.Group();group.add(body);
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo),new THREE.LineBasicMaterial({color:0x111111,linewidth:1}));
+  edges.position.y=bodyH/2;group.add(edges);
+  const studR=U*s*.35,studH=SH*s*.75,studGeo=new THREE.CylinderGeometry(studR,studR,studH,24);
+  const studMat=new THREE.MeshPhongMaterial({color:0x383838,specular:0x555555,shininess:50,flatShading:true});
+  const edgeMat=new THREE.LineBasicMaterial({color:0x111111,linewidth:1});
+  const studY=bodyH+studH/2;
+  if(isSide){
+    const stud=new THREE.Mesh(studGeo,studMat);stud.castShadow=true;stud.position.set(0,studY,0);group.add(stud);
+    const se=new THREE.LineSegments(new THREE.EdgesGeometry(studGeo,30),edgeMat);se.position.copy(stud.position);group.add(se);
+  } else {
+    for(let r=0;r<d;r++){
+      const z=-bodyD/2+U*s*(r+.5);
+      for(let i=0;i<n;i++){
+        const x=-bodyW/2+U*s*(i+.5);
+        const stud=new THREE.Mesh(studGeo,studMat);stud.castShadow=true;stud.position.set(x,studY,z);group.add(stud);
+        const se=new THREE.LineSegments(new THREE.EdgesGeometry(studGeo,30),edgeMat);se.position.copy(stud.position);group.add(se);
+      }
+    }
+  }
+  return group;
+}
+
+function getBrickPos3D(b,mode,cx,cy){
+  const s=SCALE_2D_TO_3D;
+  if(mode==='flat'){
+    // 1:1 from 2D — X=horizontal, Y=vertical(inverted), Z=0
+    return {x:(b.tx-cx)*s, y:-(b.ty-cy)*s, z:0};
+  } else {
+    // stack: exploded by layer — original behaviour
+    return {x:-(b.tx-cx)*s, y:(b.layer||0)*BSTK*s, z:-(b.ty-cy)*s};
+  }
+}
+
+/** Word / 超宽画布：3D 与 2D 一致以左侧为水平原点；否则仍用重心。 */
+function useLeftAnchored3dOrigin(){
+  if(currentComp&&currentComp.name==='Word') return true;
+  const mw=document.getElementById('main-work');
+  return !!(mw&&mw.scrollWidth>mw.clientWidth+2);
+}
+function get3dLayoutOriginXY(){
+  if(!bricks.length) return {cx:0,cy:0};
+  let minLX=Infinity,sumTX=0,sumTY=0;
+  for(const b of bricks){
+    const bd=getBounds(b.tx,b.ty,b.view,b.rotated,b.size,b.depth);
+    minLX=Math.min(minLX,bd.x0);
+    sumTX+=b.tx;sumTY+=b.ty;
+  }
+  const n=bricks.length;
+  const cy=sumTY/n;
+  const cx=useLeftAnchored3dOrigin()?minLX:sumTX/n;
+  return {cx,cy};
+}
+
+function updateLightForMode(){
+  scene3d.children.forEach(c=>{
+    if(c.isDirectionalLight&&c.castShadow){
+      if(layout3dMode==='flat'){
+        c.position.set(6,18,12);
+        c.shadow.camera.left=-50;c.shadow.camera.right=50;
+        c.shadow.camera.top=50;c.shadow.camera.bottom=-50;
+      } else {
+        c.position.set(8,20,10);
+        c.shadow.camera.left=-30;c.shadow.camera.right=30;
+        c.shadow.camera.top=30;c.shadow.camera.bottom=-30;
+      }
+      c.shadow.camera.updateProjectionMatrix();
+    }
+    // ground plane shadow only meaningful in stack mode
+    if(c.isMesh&&c.material&&c.material.isShadowMaterial) c.visible=(layout3dMode==='stack');
+  });
+}
+
+function _recalcOrbitBounds(){
+  const s=SCALE_2D_TO_3D;
+  const ch=bricksGroup3d.children;
+  const avgY=ch.length?ch.reduce((a,c)=>a+c.position.y,0)/ch.length:0;
+  sceneCenterY3d=avgY;
+  let maxE=0;
+  ch.forEach(c=>{maxE=Math.max(maxE,Math.abs(c.position.x),Math.abs(c.position.y-avgY),Math.abs(c.position.z));});
+  const hb=(BW/2)*s;
+  orbit.radius=Math.max(14,(maxE+hb*2)*2.2);orbit.baseRadius=orbit.radius;
+  orbit.targetX=0;orbit.targetY=sceneCenterY3d;orbit.targetZ=0;
+  if(pipCamera){const ext=Math.max(4,maxE+hb*2)*1.3;pipCamera.left=-ext;pipCamera.right=ext;pipCamera.top=ext*.75;pipCamera.bottom=-ext*.75;pipCamera.updateProjectionMatrix();}
+}
+
+function syncBricksTo3D(){
+  if(!bricksGroup3d) return;
+  brickPosTweens=[];
+  while(bricksGroup3d.children.length)bricksGroup3d.remove(bricksGroup3d.children[0]);
+  const {cx,cy}=get3dLayoutOriginXY();
+  bricks.forEach((b,idx)=>{
+    const mesh=createBrickMesh3D(b);
+    const p=getBrickPos3D(b,layout3dMode,cx,cy);
+    mesh.position.set(p.x,p.y,p.z);
+    mesh.userData={brickIndex:idx,layer:b.layer||0,tx:b.tx,ty:b.ty};
+    bricksGroup3d.add(mesh);
+  });
+  updateLightForMode();
+  _recalcOrbitBounds();
+}
+
+function switchLayout3D(toMode){
+  if(toMode===layout3dMode||!bricksGroup3d||!bricksGroup3d.children.length) return;
+  layout3dMode=toMode;
+  const btn=document.getElementById('btn-3d-mode');
+  btn.textContent=toMode==='flat'?'Flat':'Stack';
+  btn.title=toMode==='flat'?'Currently: Flat layout (1:1 from 2D) — click for Stack':'Currently: Stack layout (layered) — click for Flat';
+
+  const {cx,cy}=get3dLayoutOriginXY();
+  const DUR=800;
+  const start=performance.now();
+
+  brickPosTweens=bricksGroup3d.children.map((mesh,i)=>{
+    const b=bricks[i]; if(!b) return null;
+    const from={x:mesh.position.x,y:mesh.position.y,z:mesh.position.z};
+    const to=getBrickPos3D(b,toMode,cx,cy);
+    return {mesh,from,to,delay:i*15,dur:DUR};
+  }).filter(Boolean);
+
+  updateLightForMode();
+  const frozenTargetY=orbit.targetY;
+
+  function step(){
+    const now=performance.now()-start;
+    let allDone=true;
+    brickPosTweens.forEach(t=>{
+      const elapsed=Math.max(0,now-t.delay);
+      const raw=Math.min(1,elapsed/t.dur);
+      const e=raw<.5?4*raw*raw*raw:(raw-1)*(2*raw-2)*(2*raw-2)+1;
+      t.mesh.position.set(
+        t.from.x+(t.to.x-t.from.x)*e,
+        t.from.y+(t.to.y-t.from.y)*e,
+        t.from.z+(t.to.z-t.from.z)*e
+      );
+      if(raw<1) allDone=false;
+    });
+    orbit.targetY=frozenTargetY;
+    if(!allDone){ requestAnimationFrame(step); return; }
+    brickPosTweens=[];
+    const ch=bricksGroup3d.children;
+    const newY=ch.length?ch.reduce((a,c)=>a+c.position.y,0)/ch.length:0;
+    const camFrom=frozenTargetY,camDur=350,camT=performance.now();
+    function camStep(){
+      const p=Math.min(1,(performance.now()-camT)/camDur);
+      const e=p<.5?4*p*p*p:(p-1)*(2*p-2)*(2*p-2)+1;
+      orbit.targetY=camFrom+(newY-camFrom)*e;
+      sceneCenterY3d=orbit.targetY;
+      if(p<1) requestAnimationFrame(camStep);
+      else _recalcOrbitBounds();
+    }
+    requestAnimationFrame(camStep);
+  }
+  requestAnimationFrame(step);
+}
+
+function setOrbitFrom2DView(){
+  const name=currentPersp&&currentPersp.name?currentPersp.name:'Front View';
+  let key='front';if(name==='Side View')key='side';else if(name==='Top View')key='top';else if(name==='Isometric')key='iso';
+  const p=ANGLE_PRESETS[key];orbit.theta=p.theta;orbit.phi=p.phi;
+}
+function updateCamera3d(){
+  const r=orbit.radius,t=orbit.theta,p=orbit.phi,tx=orbit.targetX,ty=orbit.targetY,tz=orbit.targetZ;
+  camera3d.position.set(tx+r*Math.sin(p)*Math.cos(t),ty+r*Math.cos(p),tz+r*Math.sin(p)*Math.sin(t));
+  camera3d.lookAt(tx,ty,tz);camera3d.updateProjectionMatrix();
+}
+function animateOrbitTo(theta,phi,dur,radius,tx,ty,tz){
+  orbitTween={startTheta:orbit.theta,startPhi:orbit.phi,endTheta:theta,endPhi:phi,
+    startRadius:orbit.radius,endRadius:radius!=null?radius:orbit.radius,
+    startTX:orbit.targetX,startTY:orbit.targetY,startTZ:orbit.targetZ,
+    endTX:tx!=null?tx:orbit.targetX,endTY:ty!=null?ty:orbit.targetY,endTZ:tz!=null?tz:orbit.targetZ,t:0,duration:dur||40};
+}
+function onOrbitStart(e){if(viewMode!=='3d')return;if(e.shiftKey&&phase==='holding'){if(start3dDrag(e))return;}orbit.dragging=true;orbit.prevX=orbit._startX=e.clientX;orbit.prevY=orbit._startY=e.clientY;orbitTween=null;}
+function onOrbitMove(e){if(drag3d.active){move3dDrag(e);return;}if(!orbit.dragging)return;orbit.theta-=(e.clientX-orbit.prevX)*.008;orbit.phi=Math.max(.15,Math.min(Math.PI-.15,orbit.phi+(e.clientY-orbit.prevY)*.008));orbit.prevX=e.clientX;orbit.prevY=e.clientY;}
+function onOrbitEnd(e){if(drag3d.active){end3dDrag();return;}if(orbit.dragging&&orbit.prevX===orbit._startX&&orbit.prevY===orbit._startY)pick3dBrick(e);orbit.dragging=false;}
+function onOrbitZoom(e){
+  if(viewMode!=='3d')return;
+  const mw=document.getElementById('main-work');
+  if(mw&&mw.scrollWidth>mw.clientWidth+2){
+    const adx=Math.abs(e.deltaX),ady=Math.abs(e.deltaY);
+    if(adx>=ady&&adx>0.5){ mw.scrollLeft+=e.deltaX; e.preventDefault(); return; }
+    if(e.shiftKey&&ady>0.5){ mw.scrollLeft+=e.deltaY; e.preventDefault(); return; }
+  }
+  e.preventDefault();
+  orbit.radius=Math.max(4,Math.min(80,orbit.radius+e.deltaY*.03));
+}
+function onResize3d(){if(!renderer3d||!camera3d)return;const c=document.getElementById('view-3d');const w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;camera3d.aspect=w/h;camera3d.updateProjectionMatrix();renderer3d.setSize(w,h);}
+/** 3D 时把 #view-3d 钉在 #main-work 可见矩形上（宽度=视口，与网页主区左缘对齐），避免超宽画布下场景在右侧看不见。 */
+function syncView3dDock(){
+  const mw=document.getElementById('main-work');
+  const v3=document.getElementById('view-3d');
+  if(!mw||!v3) return;
+  if(viewMode==='3d'){
+    mw.classList.add('view-3d-lock');
+    const r=mw.getBoundingClientRect();
+    v3.style.position='fixed';
+    v3.style.left=Math.round(r.left)+'px';
+    v3.style.top=Math.round(r.top)+'px';
+    v3.style.width=Math.round(r.width)+'px';
+    v3.style.height=Math.round(r.height)+'px';
+    v3.style.right='auto';
+    v3.style.bottom='auto';
+    v3.style.zIndex='25';
+    mw.scrollLeft=0;
+    onResize3d();
+  } else {
+    mw.classList.remove('view-3d-lock');
+    ['position','left','top','width','height','right','bottom','zIndex'].forEach(p=>{v3.style[p]='';});
+  }
+}
+function start3dDrag(e){if(!renderer3d||!camera3d||!bricksGroup3d)return false;const rect=renderer3d.domElement.getBoundingClientRect();const mouse=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);const rc=new THREE.Raycaster();rc.setFromCamera(mouse,camera3d);const meshes=[];bricksGroup3d.children.forEach(g=>{g.traverse(c=>{if(c.isMesh){c._pg=g;meshes.push(c);}});});const hits=rc.intersectObjects(meshes);if(!hits.length)return false;const group=hits[0].object._pg;if(!group)return false;const pn=new THREE.Vector3();camera3d.getWorldDirection(pn);const dp=new THREE.Plane().setFromNormalAndCoplanarPoint(pn,group.position);const ix=new THREE.Vector3();rc.ray.intersectPlane(dp,ix);drag3d={active:true,group,plane:dp,offset:ix.sub(group.position)};return true;}
+function move3dDrag(e){if(!drag3d.active||!drag3d.group)return;const rect=renderer3d.domElement.getBoundingClientRect();const mouse=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);const rc=new THREE.Raycaster();rc.setFromCamera(mouse,camera3d);const t=new THREE.Vector3();rc.ray.intersectPlane(drag3d.plane,t);if(t)drag3d.group.position.copy(t.sub(drag3d.offset));}
+function end3dDrag(){if(!drag3d.active)return;const d=drag3d.group.userData;if(d&&typeof d.brickIndex==='number'&&bricks[d.brickIndex]){const s=SCALE_2D_TO_3D,{cx,cy}=get3dLayoutOriginXY(),b=bricks[d.brickIndex];b.tx=cx-drag3d.group.position.x/s;b.ty=cy-drag3d.group.position.z/s;b.x=b.tx;b.y=b.ty;}drag3d={active:false,group:null,plane:null,offset:null};}
+/** Write 3D mesh positions back to bricks[] (same mapping as end3dDrag). Call before Share in 3D. */
+function syncBricksFrom3DMeshesToData(){
+  if(viewMode!=='3d'||!bricksGroup3d||bricksGroup3d.children.length!==bricks.length||!bricks.length) return;
+  const s=SCALE_2D_TO_3D,{cx,cy}=get3dLayoutOriginXY();
+  bricks.forEach((b,i)=>{
+    const mesh=bricksGroup3d.children[i];
+    if(!mesh) return;
+    b.tx=cx-mesh.position.x/s;
+    b.ty=cy-mesh.position.z/s;
+    b.x=b.tx;b.y=b.ty;
+  });
+  recomputeFrontLayersBySupport();
+}
+function applyImportedView3d(meta){
+  if(!meta||!meta.orbit) return;
+  const o=meta.orbit;
+  if(typeof o.theta==='number') orbit.theta=o.theta;
+  if(typeof o.phi==='number') orbit.phi=o.phi;
+  if(typeof o.radius==='number'){ orbit.radius=o.radius; orbit.baseRadius=o.radius; }
+  if(typeof o.targetX==='number') orbit.targetX=o.targetX;
+  if(typeof o.targetY==='number') orbit.targetY=o.targetY;
+  if(typeof o.targetZ==='number') orbit.targetZ=o.targetZ;
+  if(meta.layout3dMode==='stack'||meta.layout3dMode==='flat'){
+    layout3dMode=meta.layout3dMode;
+    const btn=document.getElementById('btn-3d-mode');
+    if(btn){
+      btn.textContent=layout3dMode==='flat'?'Flat':'Stack';
+      btn.title=layout3dMode==='flat'?'Currently: Flat layout (1:1 from 2D) — click for Stack':'Currently: Stack layout (layered) — click for Flat';
+    }
+  }
+  orbitTween=null;
+}
+
+
+// ── 3D brick highlight / inspect ──────────────────────────
+let highlighted3d=null, preHighlightOrbit=null, _pendingHighlightIndex=-1;
+const HIGHLIGHT_COLOR=0x00aaff, NORMAL_EDGE_COLOR=0x111111;
+
+function mainWorkHasHorizontalOverflow(){
+  const mw=document.getElementById('main-work');
+  return !!(mw&&mw.scrollWidth>mw.clientWidth+2);
+}
+function refresh3dPanHint(){
+  const hint=document.getElementById('status-hint');
+  if(!hint||viewMode!=='3d'||highlighted3d) return;
+  const wide=mainWorkHasHorizontalOverflow();
+  const base=orbit.autoRotate?'auto-rotating · drag to orbit · 2D to edit':'drag to orbit · click brick to inspect · 2D to edit';
+  hint.textContent=wide?base+' · shift+wheel or trackpad X to slide wide layout':base;
+}
+function updateMainWorkScrollChrome(){
+  const mw=document.getElementById('main-work');
+  if(!mw) return;
+  const ov=mw.scrollWidth>mw.clientWidth+2;
+  mw.classList.toggle('show-x-scrollbar-3d',viewMode==='3d'&&ov);
+  refresh3dPanHint();
+}
+
+function highlight3dBrick(group){
+  if(highlighted3d===group){unhighlight3d();return;}
+  if(!highlighted3d){
+    preHighlightOrbit={theta:orbit.theta,phi:orbit.phi,radius:orbit.radius,
+      tx:orbit.targetX,ty:orbit.targetY,tz:orbit.targetZ};
+  }
+  unhighlight3dVisual();
+  highlighted3d=group;
+  group.traverse(child=>{
+    if(child.isMesh) child.visible=false;
+    if(child.isLineSegments&&child.material){
+      child.material=child.material.clone();child.material.color.set(HIGHLIGHT_COLOR);}
+  });
+  const d=group.userData,hint=document.getElementById('status-hint');
+  if(hint&&d) hint.textContent='Brick #'+(d.brickIndex+1)+'  ·  layer '+d.layer+'  ·  click empty to return';
+  const pos=group.position,zoomRadius=Math.max(6,orbit.baseRadius*.35);
+  animateOrbitTo(orbit.theta,orbit.phi,50,zoomRadius,pos.x,pos.y,pos.z);
+  // Show annotation label in Alphabet mode
+  show3dAnnotationLabel(group);
+}
+
+function unhighlight3dVisual(){
+  if(!highlighted3d) return;
+  highlighted3d.traverse(child=>{
+    if(child.isMesh) child.visible=true;
+    if(child.isLineSegments&&child.material){
+      child.material=child.material.clone();child.material.color.set(NORMAL_EDGE_COLOR);}
+  });
+  highlighted3d=null;
+  remove3dAnnotationLabel();
+}
+
+function unhighlight3d(){
+  if(!highlighted3d&&!preHighlightOrbit) return;
+  unhighlight3dVisual();
+  if(preHighlightOrbit){
+    const s=preHighlightOrbit;
+    animateOrbitTo(s.theta,s.phi,50,s.radius,s.tx,s.ty,s.tz);
+    preHighlightOrbit=null;
+  }
+  const hint=document.getElementById('status-hint');
+  refresh3dPanHint();
+}
+
+function pick3dBrick(e){
+  if(!renderer3d||!camera3d||!bricksGroup3d) return;
+  const rect=renderer3d.domElement.getBoundingClientRect();
+  const mouse=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+  const raycaster=new THREE.Raycaster();raycaster.setFromCamera(mouse,camera3d);
+  const meshes=[];
+  bricksGroup3d.children.forEach(group=>{group.traverse(child=>{if(child.isMesh){child._parentGroup=group;meshes.push(child);}});});
+  const hits=raycaster.intersectObjects(meshes);
+  if(hits.length>0){const group=hits[0].object._parentGroup;if(group)highlight3dBrick(group);}
+  else unhighlight3d();
+}
+
+function loop3d(){
+  if(viewMode!=='3d')return;
+  if(orbitTween){orbitTween.t++;const p=Math.min(1,orbitTween.t/orbitTween.duration);const ease=1-Math.pow(1-p,3);const lp=(a,b)=>a+(b-a)*ease;orbit.theta=lp(orbitTween.startTheta,orbitTween.endTheta);orbit.phi=lp(orbitTween.startPhi,orbitTween.endPhi);orbit.radius=lp(orbitTween.startRadius,orbitTween.endRadius);orbit.targetX=lp(orbitTween.startTX,orbitTween.endTX);orbit.targetY=lp(orbitTween.startTY,orbitTween.endTY);orbit.targetZ=lp(orbitTween.startTZ,orbitTween.endTZ);if(p>=1)orbitTween=null;}
+  else if(orbit.autoRotate&&!orbit.dragging) orbit.theta+=orbit.autoRotateSpeed;
+  updateCamera3d();renderer3d.render(scene3d,camera3d);
+  update3dAnnotationPosition();
+  if(pipRenderer&&pipCamera&&scene3d){pipCamera.position.set(orbit.targetX,60,orbit.targetZ);pipCamera.lookAt(orbit.targetX,orbit.targetY,orbit.targetZ);const bg=scene3d.background;scene3d.background=new THREE.Color(0xf5f5f5);pipRenderer.render(scene3d,pipCamera);scene3d.background=bg;}
+  anim3dId=requestAnimationFrame(loop3d);
+}
+
+function setViewMode(mode){
+  viewMode=mode;const v3d=document.getElementById('view-3d'),b2d=document.getElementById('btn-view-2d'),b3d=document.getElementById('btn-view-3d'),ap=document.getElementById('view-angles');
+  if(typeMode)exitTypeMode();
+  const styleBtn=document.getElementById('btn-style');
+  const addBrickBtn=document.getElementById('btn-add-brick');
+  const moreBtn=document.getElementById('btn-more');
+  const groupBtn=document.getElementById('btn-group');
+  const ungroupBtn=document.getElementById('btn-ungroup');
+  const rotateSelBtn=document.getElementById('btn-rotate-sel');
+  const selectModeBtn=document.getElementById('btn-select-mode');
+  const panelRandom=document.getElementById('panel-random');
+  const panelClear=document.getElementById('panel-clear');
+  const panelApply=document.getElementById('panel-apply');
+  if(mode==='3d'){
+    v3d.classList.add('active');b3d.classList.add('primary');b2d.classList.remove('primary');
+    if(styleBtn) styleBtn.disabled=true;
+    if(addBrickBtn) addBrickBtn.disabled=true;
+    if(moreBtn) moreBtn.disabled=true;
+    if(groupBtn) groupBtn.disabled=true;
+    if(ungroupBtn) ungroupBtn.disabled=true;
+    if(rotateSelBtn) rotateSelBtn.disabled=true;
+    if(selectModeBtn) selectModeBtn.disabled=true;
+    if(panelRandom) panelRandom.disabled=true;
+    if(panelClear) panelClear.disabled=true;
+    if(panelApply) panelApply.disabled=true;
+    if(document.getElementById('custom-panel').classList.contains('visible')) closeCustomPanel(true);
+    document.getElementById('btn-auto-rotate').style.display='';
+    document.getElementById('btn-3d-mode').style.display='';
+    const _m3btn=document.getElementById('btn-3d-mode');
+    _m3btn.textContent=layout3dMode==='flat'?'Flat':'Stack';
+    _m3btn.title=layout3dMode==='flat'?'Currently: Flat layout (1:1 from 2D) — click for Stack':'Currently: Stack layout (layered) — click for Flat';
+    ap&&ap.classList.add('visible');
+    if(typeof THREE==='undefined')return;
+    syncView3dDock();
+    initView3D();
+    if(_pendingView3dRestore&&_pendingView3dRestore.orbit){
+      applyImportedView3d(_pendingView3dRestore);
+      _pendingView3dRestore=null;
+    } else {
+      setOrbitFrom2DView();
+    }
+    syncBricksTo3D();
+    onResize3d();if(!anim3dId)loop3d();
+    requestAnimationFrame(()=>{ if(viewMode==='3d'){ syncView3dDock(); onResize3d(); } });
+    // Restore highlight if a brick was selected before switching to 2D
+    if(_pendingHighlightIndex>=0&&bricksGroup3d&&bricksGroup3d.children[_pendingHighlightIndex]){
+      highlight3dBrick(bricksGroup3d.children[_pendingHighlightIndex]);
+      _pendingHighlightIndex=-1;
+    }
+  } else {
+    v3d.classList.remove('active');
+    syncView3dDock();
+    b2d.classList.add('primary');b3d.classList.remove('primary');
+    if(styleBtn) styleBtn.disabled=false;
+    if(addBrickBtn) addBrickBtn.disabled=false;
+    if(moreBtn) moreBtn.disabled=false;
+    if(groupBtn) groupBtn.disabled=false;
+    if(ungroupBtn) ungroupBtn.disabled=false;
+    if(rotateSelBtn) rotateSelBtn.disabled=false;
+    if(selectModeBtn) selectModeBtn.disabled=false;
+    if(panelRandom) panelRandom.disabled=false;
+    if(panelClear) panelClear.disabled=false;
+    if(panelApply) panelApply.disabled=false;
+    document.getElementById('btn-auto-rotate').style.display='none';
+    document.getElementById('btn-3d-mode').style.display='none';
+    ap&&ap.classList.remove('visible');
+    // Save which brick was highlighted so we can restore on next 3D entry
+    if(highlighted3d&&bricksGroup3d){
+      _pendingHighlightIndex=bricksGroup3d.children.indexOf(highlighted3d);
+    } else {
+      _pendingHighlightIndex=-1;
+    }
+    if(highlighted3d){unhighlight3dVisual();preHighlightOrbit=null;}
+    if(anim3dId){cancelAnimationFrame(anim3dId);anim3dId=null;}
+    setStatus('holding');
+  }
+  updateMainWorkScrollChrome();
+  if(phase==='holding') refreshShareSubmitUi();
+}
+
+document.getElementById('btn-view-2d').addEventListener('click',()=>setViewMode('2d'));
+document.getElementById('btn-view-3d').addEventListener('click',()=>setViewMode('3d'));
+document.getElementById('btn-3d-mode').addEventListener('click',()=>{
+  switchLayout3D(layout3dMode==='flat'?'stack':'flat');
+});
+document.getElementById('btn-auto-rotate').addEventListener('click',()=>{if(viewMode!=='3d')return;orbit.autoRotate=!orbit.autoRotate;document.getElementById('btn-auto-rotate').classList.toggle('active',orbit.autoRotate);refresh3dPanHint();});
+
+const ANGLE_PRESETS={front:{theta:-Math.PI/2,phi:Math.PI/2},side:{theta:0,phi:Math.PI*.38},top:{theta:0,phi:.05},iso:{theta:-Math.PI/4,phi:Math.PI*.42}};
+document.getElementById('view-angles').addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-angle]');if(!btn||viewMode!=='3d')return;
+  const preset=ANGLE_PRESETS[btn.dataset.angle];if(!preset)return;
+  orbitTween=null;orbit.autoRotate=false;document.getElementById('btn-auto-rotate').classList.remove('active');
+  animateOrbitTo(preset.theta,preset.phi,45);
+  // Keep preHighlightOrbit in sync so unhighlight returns to THIS angle
+  if(preHighlightOrbit){ preHighlightOrbit.theta=preset.theta; preHighlightOrbit.phi=preset.phi; }
+  document.querySelectorAll('#view-angles button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+});
+
+// ── Custom panel drag ─────────────────────────────────────
+(()=>{
+  const panel=document.getElementById('custom-panel');
+  const handle=panel.querySelector('h3');
+  let pd={active:false,ox:0,oy:0,pl:0,pt:0};
+  handle.addEventListener('mousedown',e=>{
+    if(e.button!==0) return;
+    pd.active=true;
+    pd.ox=e.clientX; pd.oy=e.clientY;
+    pd.pl=parseInt(panel.style.left)||panel.offsetLeft;
+    pd.pt=parseInt(panel.style.top)||panel.offsetTop;
+    handle.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!pd.active) return;
+    panel.style.left=(pd.pl+(e.clientX-pd.ox))+'px';
+    panel.style.top =(pd.pt+(e.clientY-pd.oy))+'px';
+  });
+  window.addEventListener('mouseup',()=>{
+    if(pd.active){ pd.active=false; handle.style.cursor='grab'; }
+  });
+})();
+
+// ════════════════════════════════════════════════════════════
+//  ORIGINAL SDF HELPERS (for built-in renderer)
+// ════════════════════════════════════════════════════════════
+function getActiveWordVisualScale(){
+  return 1;
+}
+function getSDF(px,py,bx,by,view,rotated,size,depth){if(view==='side')return sdfSide(px,py,bx,by,size);if(view==='top')return sdfTop(px,py,bx,by,size,depth);return sdfFront(px,py,bx,by,rotated,size);}
+function getStudCenters(bx,by,view,rotated,size,depth){
+  const vs=getActiveWordVisualScale(),u=U*vs,bh=BH*vs,sw=SW*vs,sh=SH*vs,w=brickW(size);
+  if(view==='side'||rotated)return[{sx:bx,sy:by-bh/2-sh/2,hw:sw/2,hh:sh/2}];
+  if(view==='top'){
+    const n=size||4,d=Math.max(1,depth||1),pr=sw/2,studs=[];
+    for(let r=0;r<d;r++){
+      const sy=by-(d-1)*u/2+r*u;
+      for(let i=0;i<n;i++){
+        const sx=bx-w/2+u*(i+0.5);
+        studs.push({sx,sy,hw:pr,hh:pr});
+      }
+    }
+    return studs;
+  }
+  const n=size||4,studY=by-bh/2-sh/2,studs=[];for(let i=0;i<n;i++)studs.push(bx-w/2+u*(i+.5));return studs.map(sx=>({sx,sy:studY,hw:sw/2,hh:sh/2}));
+}
+function getStudGradient(px,py,bx,by,view,rotated,size,depth){const studs=getStudCenters(bx,by,view,rotated,size,depth);for(const{sx,sy,hw,hh}of studs){const nx=(px-sx)/hw,ny=(py-sy)/hh,e=nx*nx+ny*ny;if(e<=1)return Math.max(0,1-e);}return -1;}
+function sdfBody(px,py,bx,by,view,rotated,size,depth){const vs=getActiveWordVisualScale(),w=brickW(size),u=U*vs,bh=BH*vs,br=BR*vs;if(view==='side'||rotated)return sdBox(px,py,bx,by,bh/2,bh/2,br);if(view==='top')return sdBox(px,py,bx,by,w/2,Math.max(1,depth||1)*u/2,br);return sdBox(px,py,bx,by,w/2,bh/2,br);}
+function getBounds(bx,by,view,rotated,size,depth){const vs=getActiveWordVisualScale(),w=brickW(size),u=U*vs,bh=BH*vs,sw=SW*vs,sh=SH*vs;if(view==='side'||rotated)return{x0:bx-bh/2-2,x1:bx+bh/2+2,y0:by-bh/2-sh-2,y1:by+bh/2+2};if(view==='top'){const hd=Math.max(1,depth||1)*u/2;return{x0:bx-w/2-2,x1:bx+w/2+2,y0:by-hd-2,y1:by+hd+2};}return{x0:bx-w/2-sw/2-2,x1:bx+w/2+sw/2+2,y0:by-bh/2-sh-2,y1:by+bh/2+2};}
+function sdfFront(px,py,bx,by,rotated,size){if(rotated)return sdfSide(px,py,bx,by,size);const vs=getActiveWordVisualScale(),w=brickW(size),u=U*vs,bh=BH*vs,sw=SW*vs,sh=SH*vs,br=BR*vs,sr=SR*vs,n=size||4;let d=sdBox(px,py,bx,by,w/2,bh/2,br);const top=by-bh/2;for(let i=0;i<n;i++){const sx=bx-w/2+u*(i+.5);d=Math.min(d,sdBox(px,py,sx,top-sh/2,sw/2,sh/2,sr));}return d;}
+function sdfSide(px,py,bx,by){const vs=getActiveWordVisualScale(),bh=BH*vs,sw=SW*vs,sh=SH*vs,br=BR*vs,sr=SR*vs;let d=sdBox(px,py,bx,by,bh/2,bh/2,br);return Math.min(d,sdBox(px,py,bx,by-bh/2-sh/2,sw/2,sh/2,sr));}
+function sdfTop(px,py,bx,by,size,depth){const vs=getActiveWordVisualScale(),w=brickW(size),u=U*vs,br=BR*vs;const hd=Math.max(1,depth||1)*u/2;return sdBox(px,py,bx,by,w/2,hd,br);}
+function sdBox(px,py,cx,cy,hw,hh,r){r=r||0;const qx=Math.abs(px-cx)-hw+r,qy=Math.abs(py-cy)-hh+r;return Math.min(Math.max(qx,qy),0)+Math.sqrt(Math.max(qx,0)**2+Math.max(qy,0)**2)-r;}
+
+// ════════════════════════════════════════════════════════════
+//  PROJECTIONS
+// ════════════════════════════════════════════════════════════
+function projFront(bs,cx,cy){return bs.map(b=>({x:b.x,y:b.y,view:'front',size:b.size||4,depth:b.depth||1}));}
+/** Right side elevation: each stud row keeps the rightmost brick only; stacked 1×1 side views centered at cx. Only the top piece shows studs (lower covered via getCoveredStudXs). Same rule for all compositions (Word = one merged silhouette if rows align). */
+function projSide(bs,cx,cy){
+  if(!bs.length) return[];
+  const mcy=avg(bs.map(b=>b.y));
+  const byRow=new Map();
+  for(const b of bs){
+    const row=Math.round((b.y-mcy)/BSTK);
+    const prev=byRow.get(row);
+    if(!prev||b.x>prev.x) byRow.set(row,{y:b.y});
+  }
+  const exposed=[...byRow.values()].sort((a,b)=>a.y-b.y);
+  const n=exposed.length;
+  const out=[];
+  for(let i=0;i<n;i++)
+    out.push({x:cx,y:cy-(n-1)*BSTK/2+i*BSTK,view:'side',size:1,depth:1});
+  return out;
+}
+/** Bird’s-eye: only bricks visible from above — per front-view column (x), keep the topmost stud row; flatten to one line. */
+function projTop(bs,cx,cy){
+  if(!bs.length) return[];
+  const mcx=avg(bs.map(b=>b.x)),mcy=avg(bs.map(b=>b.y));
+  const byCol=new Map();
+  for(const b of bs){
+    const col=Math.round((b.x-mcx)/BW);
+    const prev=byCol.get(col);
+    if(!prev||b.y<prev.y) byCol.set(col,{x:b.x,y:b.y,size:b.size||4,depth:b.depth||1});
+  }
+  const exposed=[...byCol.values()].sort((a,b)=>a.x-b.x);
+  const rowY=exposed.length?Math.min(...exposed.map(b=>b.y)):mcy;
+  return exposed.map(b=>({x:cx+(b.x-mcx),y:cy+(rowY-mcy),view:'top',size:b.size||4,depth:b.depth||1}));
+}
+function projIso(bs,cx,cy){const mcx=avg(bs.map(b=>b.x)),mcy=avg(bs.map(b=>b.y));return bs.map(b=>{const dx=b.x-mcx,dy=b.y-mcy;return{x:cx+(dx-dy*.3)*.75,y:cy+(dx*.25+dy*.5)*.75,view:'front',size:b.size||4,depth:b.depth||1};});}
+function projCloseup(bs,cx,cy){const mcx=avg(bs.map(b=>b.x)),mcy=avg(bs.map(b=>b.y));return bs.map(b=>({x:cx+(b.x-mcx)*2.5,y:cy+(b.y-mcy)*2.5,view:'front',size:b.size||4,depth:b.depth||1}));}
+function projExploded(bs,cx,cy){const mcx=avg(bs.map(b=>b.x)),mcy=avg(bs.map(b=>b.y));return bs.map(b=>({x:cx+(b.x-mcx)*1.8,y:cy+(b.y-mcy)*1.8,view:'front',size:b.size||4,depth:b.depth||1}));}
+
+// ════════════════════════════════════════════════════════════
+//  COMPOSITIONS
+// ════════════════════════════════════════════════════════════
+function bk(x,y,size,depth){return{x:Math.round(x),y:Math.round(y),size:size||4,depth:depth||1};}
+function brickW(size){return(size||4)*U;}
+function randUnit(){return rndItem(BRICK_UNITS);}
+function randDepth(){return rndItem(BRICK_DEPTHS);}
+function rbk(x,y){return bk(x,y,randUnit(),randDepth());}
+function comp01(cx,cy){return[rbk(cx,cy)];}
+function comp02(cx,cy){return[rbk(cx-BW/2,cy),rbk(cx+BW/2,cy)];}
+function comp03(cx,cy){return[rbk(cx,cy+BSTK),rbk(cx,cy),rbk(cx,cy-BSTK)];}
+function comp04(cx,cy){return[rbk(cx-U*3,cy+BSTK*1.5),rbk(cx-U,cy+BSTK*.5),rbk(cx+U,cy-BSTK*.5),rbk(cx+U*3,cy-BSTK*1.5)];}
+function comp05(cx,cy){return[rbk(cx-BW/2,cy+BSTK),rbk(cx+BW/2,cy+BSTK),rbk(cx-BW/2,cy),rbk(cx+BW/2,cy),rbk(cx,cy-BSTK)];}
+function comp06(cx,cy){return[rbk(cx,cy),rbk(cx,cy-BSTK),rbk(cx,cy+BSTK),rbk(cx-BW,cy),rbk(cx+BW,cy),rbk(cx,cy-BSTK*2)];}
+function comp07(cx,cy){const lx=cx-BW*.7,rx=cx+BW*.7;return[rbk(lx,cy+BSTK),rbk(lx,cy),rbk(lx,cy-BSTK),rbk(rx,cy+BSTK),rbk(rx,cy),rbk(rx,cy-BSTK),rbk(cx,cy-BSTK*2)];}
+function comp08_C(cx,cy){const x0=cx-BW,x1=cx,x2=cx+BW,y0=cy-BSTK*1.5,y1=cy-BSTK*.5,y2=cy+BSTK*.5,y3=cy+BSTK*1.5;return[rbk(x0,y0),rbk(x1,y0),rbk(x2,y0),rbk(x0,y1),rbk(x0,y2),rbk(x0,y3),rbk(x1,y3),rbk(x2,y3)];}
+function comp09_U(cx,cy){const x0=cx-BW,x1=cx,x2=cx+BW,y0=cy-BSTK*1.5,y1=cy-BSTK*.5,y2=cy+BSTK*.5,y3=cy+BSTK*1.5;return[rbk(x0,y0),rbk(x0,y1),rbk(x0,y2),rbk(x0,y3),rbk(x1,y3),rbk(x2,y0),rbk(x2,y1),rbk(x2,y2),rbk(x2,y3)];}
+function comp10_H(cx,cy){const x0=cx-BW,x2=cx+BW,y0=cy-BSTK*2,y1=cy-BSTK,y2=cy,y3=cy+BSTK,y4=cy+BSTK*2;return[rbk(x0,y0),rbk(x0,y1),rbk(x0,y2),rbk(x0,y3),rbk(x0,y4),rbk(x2,y0),rbk(x2,y1),rbk(x2,y2),rbk(x2,y3),rbk(x2,y4),rbk(cx,y2)];}
+function compLetter(cx,cy){
+  const letter=LETTERS[currentLetterIndex]||'A',grid=ALPHABET[letter];
+  if(!grid)return[bk(cx,cy)];
+  const cols=4,rows=5,totalW=cols*BW,totalH=rows*BSTK,out=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)if(grid[r][c]===1)out.push(bk(cx-totalW/2+c*BW+BW/2,cy-totalH/2+r*BSTK+BSTK/2));
+  return out.length?out:[bk(cx,cy)];
+}
+function compWord(cx,cy){
+  if(!currentWord.length)return[bk(cx,cy)];
+  const {cols,rows,stepX,stepY,letterW,letterH,gapX}=getWordMetrics(1);
+  const lineLen=currentWord.length;
+  const leftPad=BW*1.5;
+  const firstCx=leftPad+letterW/2;
+  const out=[];
+  for(let li=0;li<currentWord.length;li++){
+    const ch=currentWord[li].toUpperCase(),grid=ALPHABET[ch];if(!grid)continue;
+    const lCx=firstCx+li*(letterW+gapX),lCy=cy;
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)if(grid[r][c]===1)out.push(bk(lCx-letterW/2+c*stepX+stepX/2,lCy-letterH/2+r*stepY+stepY/2));
+  }
+  return out.length?out:[bk(cx,cy)];
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════
+function lerp(a,b,t){return a+(b-a)*t;}
+function easeOutCubic(t){return 1-Math.pow(1-t,3);}
+function avg(arr){return arr.reduce((a,b)=>a+b,0)/arr.length;}
+function randomEdge(axis){
+  const W=canvas.width,H=canvas.height;
+  if(axis==='x')return Math.random()<.5?lerp(-150,-50,Math.random()):lerp(W+50,W+150,Math.random());
+  return Math.random()<.5?lerp(-100,-40,Math.random()):lerp(H+40,H+100,Math.random());
+}
+
+// ════════════════════════════════════════════════════════════
+//  BRICK ANNOTATION SYSTEM (3D only)
+// ════════════════════════════════════════════════════════════
+let _annotationLabel3d = null;
+
+// ── grid position lookup ─────────────────────────────────
+function getGridPos(brickIndex){
+  const letter=LETTERS[currentLetterIndex]||'A';
+  const grid=ALPHABET[letter];
+  if(!grid) return null;
+  const rows=5,cols=4;
+  let idx=0;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    if(grid[r][c]===1){
+      if(idx===brickIndex) return {r,c,grid,rows,cols};
+      idx++;
+    }
+  }
+  return null;
+}
+
+// ── typographic role classifier ──────────────────────────
+function classifyBrickRole(row,col,grid){
+  const rows=grid.length,cols=grid[0].length;
+  const lit=(r,c)=>r>=0&&r<rows&&c>=0&&c<cols&&grid[r][c]===1;
+  const up=lit(row-1,col),dn=lit(row+1,col),lf=lit(row,col-1),rt=lit(row,col+1);
+  const conn=[up,dn,lf,rt].filter(Boolean).length;
+  const onTop=row===0,onBot=row===rows-1,onLeft=col===0,onRight=col===cols-1;
+  if(conn===0) return 'Dot';
+  if(conn===1){
+    if(onTop&&!up)  return 'Apex';
+    if(onBot&&!dn)  return 'Foot';
+    if(!up&&!dn)    return 'Arm End';
+    if(onTop)       return 'Serif Cap';
+    return 'Terminal';
+  }
+  if(conn===2){
+    if(up&&dn&&!lf&&!rt) return (onLeft||onRight)?'Stem':'Spine';
+    if(!up&&!dn&&lf&&rt){
+      if(onTop) return 'Cap Line';
+      if(onBot) return 'Base Line';
+      return 'Cross Bar';
+    }
+    if((onTop||onBot)&&(onLeft||onRight)) return 'Serif Corner';
+    return 'Shoulder';
+  }
+  if(conn===3){
+    if(up&&dn&&(lf||rt)){
+      if(onTop) return 'Crossbar Junction';
+      if(onBot) return 'Spur';
+      return 'Bar Junction';
+    }
+    if(onTop) return 'Apex Junction';
+    return 'Counter Corner';
+  }
+  if(conn===4) return 'Nexus';
+  return 'Stroke';
+}
+
+function describeRole(role){
+  const map={
+    'Apex':'topmost meeting point','Foot':'base terminal stroke',
+    'Arm End':'free end of arm','Serif Cap':'capped stroke head',
+    'Terminal':'open stroke end','Stem':'main vertical stroke',
+    'Spine':'inner vertical stroke','Cap Line':'top horizontal stroke',
+    'Base Line':'bottom horizontal stroke','Cross Bar':'connecting bar',
+    'Serif Corner':'corner serif junction','Shoulder':'arch transition',
+    'Bar Junction':'stem × bar node','Crossbar Junction':'crossbar attach',
+    'Spur':'stem base projection','Apex Junction':'arm–stem apex',
+    'Counter Corner':'counter boundary','Junction':'multi-stroke node',
+    'Nexus':'four-way intersection','Dot':'isolated form','Stroke':'stroke unit',
+  };
+  return map[role]||role.toLowerCase();
+}
+
+function clearAnnotations(){ remove3dAnnotationLabel(); }
+
+// ── 3D annotation: DOM card projected every frame + 3D leader line ──
+function show3dAnnotationLabel(group){
+  remove3dAnnotationLabel();
+  if(!scene3d) return;
+  const d=group.userData;
+  if(typeof d.brickIndex!=='number') return;
+
+  const isAlphabet=currentComp&&currentComp.name==='Alphabet';
+  const letter=LETTERS[currentLetterIndex]||'A';
+  let metaText='',roleText='',descText='';
+
+  if(isAlphabet){
+    const gp=getGridPos(d.brickIndex);
+    if(gp){
+      metaText=`${letter} · #${d.brickIndex+1} · R${gp.r+1} C${gp.c+1}`;
+      roleText=classifyBrickRole(gp.r,gp.c,gp.grid);
+      descText=describeRole(roleText);
+    }
+  } else {
+    metaText=`Brick ${d.brickIndex+1} · layer ${d.layer}`;
+    roleText=currentComp?currentComp.name:'';
+    descText='';
+  }
+
+  // DOM card inside #view-3d (position:absolute)
+  const el=document.createElement('div');
+  el.id='annotation-label-3d';
+  el.style.cssText='position:absolute;pointer-events:none;z-index:30;opacity:0;transition:opacity .18s;transform:translateY(-50%);';
+  el.innerHTML=`<div class="label-3d-card">
+    <div class="l3d-meta">${metaText}</div>
+    <div class="l3d-role">${roleText}</div>
+    ${descText?`<div class="l3d-desc">${descText}</div>`:''}
+  </div>`;
+  document.getElementById('view-3d').appendChild(el);
+
+  // 3D leader line in scene
+  const s=SCALE_2D_TO_3D;
+  const brickTopY=BH*s;
+  const worldPos=new THREE.Vector3();
+  group.getWorldPosition(worldPos);
+  const lineStart=worldPos.clone();
+  lineStart.y+=brickTopY+SH*s*0.5;
+  const lineEnd=worldPos.clone();
+  lineEnd.y+=brickTopY+SH*s+0.06;
+
+  const pts=[lineStart,lineEnd];
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const mat=new THREE.LineBasicMaterial({color:0x222222});
+  const leaderLine=new THREE.Line(geo,mat);
+  scene3d.add(leaderLine);
+
+  // Small dot at brick attachment
+  const dotGeo=new THREE.SphereGeometry(0.018,8,8);
+  const dotMat=new THREE.MeshBasicMaterial({color:0x222222});
+  const dot=new THREE.Mesh(dotGeo,dotMat);
+  dot.position.copy(lineStart);
+  scene3d.add(dot);
+
+  _annotationLabel3d={el,leaderLine,dot,group};
+  // Fade in
+  requestAnimationFrame(()=>{ el.style.opacity='1'; el.querySelector('.label-3d-card').classList.add('visible'); });
+}
+
+function remove3dAnnotationLabel(){
+  if(!_annotationLabel3d) return;
+  const {el,leaderLine,dot}=_annotationLabel3d;
+  if(el) el.remove();
+  if(scene3d){
+    if(leaderLine){leaderLine.geometry.dispose();leaderLine.material.dispose();scene3d.remove(leaderLine);}
+    if(dot){dot.geometry.dispose();dot.material.dispose();scene3d.remove(dot);}
+  }
+  _annotationLabel3d=null;
+}
+
+// Called every frame from loop3d — recomputes world position each frame so label tracks rotation
+function update3dAnnotationPosition(){
+  if(!_annotationLabel3d||!camera3d||!renderer3d) return;
+  const {el,group}=_annotationLabel3d;
+  const s=SCALE_2D_TO_3D;
+  const brickTopY=BH*s;
+  // Recompute world position every frame (tracks auto-rotate and view changes)
+  const worldPos=new THREE.Vector3();
+  group.getWorldPosition(worldPos);
+  worldPos.y+=brickTopY+SH*s+0.06;
+  worldPos.project(camera3d);
+  const container=document.getElementById('view-3d');
+  const w=container.clientWidth||renderer3d.domElement.offsetWidth;
+  const h=container.clientHeight||renderer3d.domElement.offsetHeight;
+  const sx=(worldPos.x+1)/2*w;
+  const sy=(-worldPos.y+1)/2*h;
+  el.style.left=(sx+12)+'px';
+  el.style.top=sy+'px';
+}
+buildPanelPills();
+bindParamControls();
+initAlphabetPanel();
+initAddBrickSpecMenu();
+updateTypeSizeUi();
+// Start in Alphabet mode at letter A
+currentComp=CARD_A.find(c=>c.name==='Alphabet');
+currentPersp=CARD_C.find(c=>c.name==='Front View')||CARD_C[0];
+currentLetterIndex=0;
+document.getElementById('btn-letters').classList.add('active');
+document.getElementById('alphabet-panel').classList.add('visible');
+applyCompAndStart();
+
+</script>
+</body>
+</html>
