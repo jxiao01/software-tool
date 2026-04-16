@@ -601,7 +601,7 @@ function pentStrokeSegmentsDeduped(ctx,segs,ink,lw){
   }
 }
 /** 一格一块：等腰直角三角形（两种直角位）、正方形、七巧板比例平行四边形；铺满正方形格 w0===h0。 */
-function drawTangramCellBlock(ctx,cx,cy,w0,h0,r,c,ink,lw){
+function buildTangramCellPath(ctx,cx,cy,w0,h0,r,c){
   const sq=w0,H=sq/2;
   const kind=(r+2*c)%4;
   ctx.translate(cx,cy);
@@ -633,6 +633,9 @@ function drawTangramCellBlock(ctx,cx,cy,w0,h0,r,c,ink,lw){
     }
   }
   ctx.closePath();
+}
+function drawTangramCellBlock(ctx,cx,cy,w0,h0,r,c,ink,lw){
+  buildTangramCellPath(ctx,cx,cy,w0,h0,r,c);
   ctx.strokeStyle=ink;
   ctx.lineWidth=lw;
   ctx.stroke();
@@ -664,18 +667,12 @@ function classifyMagnaTileKind(grid,r,c){
   return'square';
 }
 /** Magna-Tiles: full per-cell stroke (square / triangle / roof). */
-function drawMagnaTilePiece(ctx,w0,h0,kind,ink,lw){
+function buildMagnaTilePath(ctx,w0,h0,kind){
   const hw=w0/2,hh=h0/2;
-  ctx.strokeStyle=ink;
-  ctx.lineWidth=lw;
-  ctx.lineJoin='miter';
-  ctx.lineCap='butt';
-  ctx.miterLimit=2.5;
   if(kind==='square'){
     ctx.beginPath();
     ctx.rect(-hw,-hh,w0,h0);
     ctx.closePath();
-    ctx.stroke();
     return;
   }
   ctx.beginPath();
@@ -703,6 +700,14 @@ function drawMagnaTilePiece(ctx,w0,h0,kind,ink,lw){
       break;
   }
   ctx.closePath();
+}
+function drawMagnaTilePiece(ctx,w0,h0,kind,ink,lw){
+  buildMagnaTilePath(ctx,w0,h0,kind);
+  ctx.strokeStyle=ink;
+  ctx.lineWidth=lw;
+  ctx.lineJoin='miter';
+  ctx.lineCap='butt';
+  ctx.miterLimit=2.5;
   ctx.stroke();
 }
 /** Vector toy media for modular type (grid layout unchanged). Lego stays in drawLetterGrid pixel pipeline. */
@@ -733,9 +738,50 @@ function drawToyMediumLetterGrid(ctx,grid,W,H,style,stroke,gap,fg,bg,medium){
   ctx.fillStyle=paper;
   ctx.fillRect(0,0,W,H);
   const lw=Math.max(0.75,stroke*0.55);
+  function paintPatternInCurrentClip(x0,y0,w0,h0){
+    const spH=Math.max(2,gap*ch*0.12),spD=Math.max(2,gap*cw*0.06),spDot=Math.max(3,gap*cw*0.06);
+    ctx.fillStyle=ink;
+    const x1=Math.floor(x0+1),y1=Math.floor(y0+1),x2=Math.ceil(x0+w0-1),y2=Math.ceil(y0+h0-1);
+    for(let py=y1;py<=y2;py++){
+      for(let px=x1;px<=x2;px++){
+        let draw=false;
+        if(style==='hlines')draw=(py%spH<Math.max(1,stroke*0.85));
+        else if(style==='diagonal')draw=((px+py)%spD<Math.max(1,stroke*0.85));
+        else if(style==='dots')draw=(px%spDot<2&&py%spDot<2);
+        else if(style==='concentric')draw=(Math.abs((px+py*0.7)%Math.max(2,gap*0.95))<Math.max(1,stroke*0.65));
+        if(draw)ctx.fillRect(px,py,1,1);
+      }
+    }
+  }
+  function paintStyleInPath(drawPath,bounds){
+    if(!style||style==='none')return;
+    ctx.save();
+    drawPath();
+    ctx.clip();
+    if(style==='solid'){
+      ctx.fillStyle=ink;
+      ctx.fillRect(bounds.x,bounds.y,bounds.w,bounds.h);
+    }else{
+      paintPatternInCurrentClip(bounds.x,bounds.y,bounds.w,bounds.h);
+    }
+    ctx.restore();
+  }
   if(medium==='pentomino'){
     const pPad=0;
     const lay=pentLayoutForDraw(grid);
+    if(style&&style!=='none'){
+      const paintPentCell=(r,c)=>{
+        const x0=ox0+c*cw0+pPad,y0=oy0+r*ch0+pPad,w0=cw0-2*pPad,h0=ch0-2*pPad;
+        paintStyleInPath(
+          ()=>{ctx.beginPath();ctx.rect(x0,y0,w0,h0);ctx.closePath();},
+          {x:x0,y:y0,w:w0,h:h0}
+        );
+      };
+      for(const pl of lay.pieces){
+        for(const[r,c] of pl.cells)paintPentCell(r,c);
+      }
+      for(const[r,c] of lay.leftover)paintPentCell(r,c);
+    }
     const allSegs=[];
     for(let pi=0;pi<lay.pieces.length;pi++){
       const pl=lay.pieces[pi],cells=pl.cells;
@@ -761,6 +807,18 @@ function drawToyMediumLetterGrid(ctx,grid,W,H,style,stroke,gap,fg,bg,medium){
     if(medium==='pentomino')continue;
     const x0=ox+c*cw+gpad,y0=oy+r*ch+gpad,w0=cw-2*gpad,h0=ch-2*gpad;
     const cx=x0+w0/2,cy=y0+h0/2;
+    if(style&&style!=='none'){
+      paintStyleInPath(()=>{
+        ctx.save();
+        if(medium==='tangram'){
+          buildTangramCellPath(ctx,cx,cy,w0,h0,r,c);
+        }else if(medium==='magnatiles'){
+          ctx.translate(cx,cy);
+          buildMagnaTilePath(ctx,w0,h0,classifyMagnaTileKind(grid,r,c));
+        }
+        ctx.restore();
+      },{x:x0,y:y0,w:w0,h:h0});
+    }
     ctx.save();
     if(medium==='tangram'){
       drawTangramCellBlock(ctx,cx,cy,w0,h0,r,c,ink,lw);
@@ -772,34 +830,20 @@ function drawToyMediumLetterGrid(ctx,grid,W,H,style,stroke,gap,fg,bg,medium){
     ctx.restore();
   }
   if(style&&style!=='none'&&style!=='solid'&&medium!=='pentomino'&&medium!=='tangram'&&medium!=='magnatiles'){
-    const spH=Math.max(2,gap*ch*0.12),spD=Math.max(2,gap*cw*0.06),spDot=Math.max(3,gap*cw*0.06);
-    ctx.fillStyle=ink;
     for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
       if(!grid[r][c])continue;
       const x0=ox+c*cw+gpad,y0=oy+r*ch+gpad,w0=cw-2*gpad,h0=ch-2*gpad;
-      ctx.save();
-      roundToyRect(ctx,x0+1,y0+1,w0-2,h0-2,Math.min(w0,h0)*0.1);
-      ctx.clip();
-      const x1=Math.floor(x0+2),y1=Math.floor(y0+2),x2=Math.ceil(x0+w0-2),y2=Math.ceil(y0+h0-2);
-      for(let py=y1;py<=y2;py++){
-        for(let px=x1;px<=x2;px++){
-          let draw=false;
-          if(style==='hlines')draw=(py%spH<Math.max(1,stroke*0.85));
-          else if(style==='diagonal')draw=((px+py)%spD<Math.max(1,stroke*0.85));
-          else if(style==='dots')draw=(px%spDot<2&&py%spDot<2);
-          else if(style==='concentric')draw=(Math.abs((px+py*0.7)%Math.max(2,gap*0.95))<Math.max(1,stroke*0.65));
-          if(draw)ctx.fillRect(px,py,1,1);
-        }
-      }
-      ctx.restore();
+      paintStyleInPath(()=>{
+        roundToyRect(ctx,x0+1,y0+1,w0-2,h0-2,Math.min(w0,h0)*0.1);
+      },{x:x0,y:y0,w:w0,h:h0});
     }
   }else if(style==='solid'&&medium!=='pentomino'&&medium!=='tangram'&&medium!=='magnatiles'){
     for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
       if(!grid[r][c])continue;
       const x0=ox+c*cw+gpad,y0=oy+r*ch+gpad,w0=cw-2*gpad,h0=ch-2*gpad;
-      ctx.fillStyle=ink;
-      roundToyRect(ctx,x0+lw*0.35,y0+lw*0.35,w0-lw*0.7,h0-lw*0.7,Math.min(w0,h0)*0.12);
-      ctx.fill();
+      paintStyleInPath(()=>{
+        roundToyRect(ctx,x0+lw*0.35,y0+lw*0.35,w0-lw*0.7,h0-lw*0.7,Math.min(w0,h0)*0.12);
+      },{x:x0,y:y0,w:w0,h:h0});
     }
   }
 }
