@@ -1607,24 +1607,24 @@ function updateReadabilityBanner(){
   if(collisions.length>0){
     const pairs=collisions.map(([a,b])=>a+' = '+b).join('  ·  ');
     const tail=isAggressiveReadabilityPreset()||isSymmetryReadabilityRisk()
-      ? ' — Very strict rules and/or mirror·rotate symmetry strip detail; raise max cells/column, set Neighbor pass to Off, tighten merge, or use As drawn symmetry.'
+      ? ' — Very strict rules and/or mirror·rotate symmetry strip detail; raise max blocks/column, set Neighbor pass to Off, tighten merge, or use As drawn symmetry.'
       : '';
     bannerText.textContent=collisions.length+' pair'+(collisions.length>1?'s':'')+' look identical: '+pairs+tail;
     banner.style.display='block';
   }else if(isAggressiveReadabilityPreset()){
     bannerText.textContent=
-      'Typography / alphabet risk: max 1 cell per column + Any merge + Strip isolates removes most readable structure. Letters are easy to confuse — try density ≥2, Neighbor pass Off, or merge ≥ No singletons. '+
-      `(${distinct}/26 distinct silhouettes · ~${meanCells.toFixed(1)} cells/letter avg.)`;
+      'Typography / alphabet risk: max 1 block per column + Any merge + Strip isolates removes most readable structure. Letters are easy to confuse — try density ≥2, Neighbor pass Off, or merge ≥ No singletons. '+
+      `(${distinct}/26 distinct silhouettes · ~${meanCells.toFixed(1)} blocks/letter avg.)`;
     banner.style.display='block';
   }else if(isSymmetryReadabilityRisk()){
     const symLabel=rules.symmetry==='mirror'?'Mirror zone (paired columns)':'Rotate zone (180° match)';
     bannerText.textContent=
-      `Typography / alphabet risk: ${symLabel} copies half of each letter’s grid, so it stacks badly with Neighbor pass: Strip isolates (or only 1–2 cells per column) — many letters can look the same. Prefer density ≥2 + Neighbor pass Off, or As drawn symmetry. `+
-      `(${distinct}/26 distinct silhouettes · ~${meanCells.toFixed(1)} cells/letter avg.)`;
+      `Typography / alphabet risk: ${symLabel} copies half of each letter’s grid, so it stacks badly with Neighbor pass: Strip isolates (or only 1–2 blocks per column) — many letters can look the same. Prefer density ≥2 + Neighbor pass Off, or As drawn symmetry. `+
+      `(${distinct}/26 distinct silhouettes · ~${meanCells.toFixed(1)} blocks/letter avg.)`;
     banner.style.display='block';
   }else if(distinct<20&&meanCells<5){
     bannerText.textContent=
-      `Only ${distinct} distinct silhouettes across A–Z (~${meanCells.toFixed(1)} cells/letter avg.) — readability for single-letter use is weak. Loosen rules or widen the mask.`;
+      `Only ${distinct} distinct silhouettes across A–Z (~${meanCells.toFixed(1)} blocks/letter avg.) — readability for single-letter use is weak. Loosen rules or widen the mask.`;
     banner.style.display='block';
   }else{
     banner.style.display='none';
@@ -1663,14 +1663,15 @@ function syncAzViewUI(){
 function updateOvCount(){
   const n=Object.keys(overrides).length;
   document.getElementById('ov-count').textContent=n;
-  document.getElementById('ov-count2').textContent=n;
+  const ovCount2=document.getElementById('ov-count2');
+  if(ovCount2)ovCount2.textContent=n;
   const emptyHint=document.getElementById('s2-ov-empty-hint');
   if(emptyHint)emptyHint.hidden=n>0;
 }
 function syncRuleSummary(){
   const symLab={free:'As drawn',mirror:'Mirror L↔R',rotate:'180° match'};
   const medLab=MEDIUM_LABELS[normalizeToyMedium(rules.medium)];
-  document.getElementById('s2-rule-summary').innerHTML=`Mask &nbsp;<b>${rules.mask.flat().filter(Boolean).length}/20 cells active</b><br>Max cells / column &nbsp;<b>${rules.density}</b><br>Max cells / row &nbsp;<b>${rules.rowDensity}</b><br>Merge rule &nbsp;<b>${RULE_MERGE_READOUT[rules.continuity]}</b><br>Neighbor pass &nbsp;<b>${RULE_FILL_READOUT[rules.weight]}</b><br>Grid symmetry &nbsp;<b>${symLab[rules.symmetry]}</b><br>Style &nbsp;<b>${rules.style}</b><br>Toy medium &nbsp;<b>${medLab}</b>`;
+  document.getElementById('s2-rule-summary').innerHTML=`Toy medium &nbsp;<b>${medLab}</b><br>Mask active &nbsp;<b>${rules.mask.flat().filter(Boolean).length} / 20 blocks</b><br>Max blocks / column &nbsp;<b>${rules.density}</b><br>Max blocks / row &nbsp;<b>${rules.rowDensity}</b><br>Merge rule &nbsp;<b>${RULE_MERGE_READOUT[rules.continuity]}</b><br>Neighbor pass &nbsp;<b>${RULE_FILL_READOUT[rules.weight]}</b><br>Symmetry &nbsp;<b>${symLab[rules.symmetry]}</b><br>Render style &nbsp;<b>${rules.style}</b>`;
 }
 function syncExportSummary(){const n=Object.keys(overrides).length;document.getElementById('s3-ov-n').textContent=n;document.getElementById('s3-rule-n').textContent=26-n;}
 
@@ -1680,11 +1681,11 @@ function cancelS3Rafs(){if(_s3TypeRafA)cancelAnimationFrame(_s3TypeRafA);if(_s3T
 function bindS3TypeFrameResize(){
   const frame=document.getElementById('s3-type-frame');if(!frame||_s3TypeFrameRO)return;
   if(typeof ResizeObserver==='undefined')return;
-  _s3TypeFrameRO=new ResizeObserver(entries=>{for(const e of entries){const w=e.contentRect.width;if(w>=48)_s3TypeFrameWidth=Math.floor(w);}if(currentStep===3){if(exportFmt==='typeset')renderS3();else scheduleS3Type();}});
+  _s3TypeFrameRO=new ResizeObserver(entries=>{for(const e of entries){const w=e.contentRect.width;if(w>=48)_s3TypeFrameWidth=Math.floor(w);}if(currentStep===3)renderS3();});
   _s3TypeFrameRO.observe(frame);
 }
-function scheduleS3Type(){cancelS3Rafs();_s3TypeRafA=requestAnimationFrame(()=>{_s3TypeRafA=0;renderS3TypeSample();});}
-function scheduleS3TypeAfterLayout(){cancelS3Rafs();_s3TypeRafA=requestAnimationFrame(()=>{_s3TypeRafA=0;_s3TypeRafB=requestAnimationFrame(()=>{_s3TypeRafB=0;renderS3TypeSample();});});}
+function scheduleS3Type(){cancelS3Rafs();_s3TypeRafA=requestAnimationFrame(()=>{_s3TypeRafA=0;renderS3();});}
+function scheduleS3TypeAfterLayout(){cancelS3Rafs();_s3TypeRafA=requestAnimationFrame(()=>{_s3TypeRafA=0;_s3TypeRafB=requestAnimationFrame(()=>{_s3TypeRafB=0;renderS3();});});}
 function typeWordWidth(word,g,tr){return word.length?word.length*g+Math.max(0,word.length-1)*tr:0;}
 function typeBreakWord(word,maxW,g,tr){const parts=[];let chunk='';for(const ch of word){const t=chunk+ch;typeWordWidth(t,g,tr)<=maxW||chunk===''?chunk=t:(parts.push(chunk),chunk=ch);}if(chunk)parts.push(chunk);return parts;}
 function typeWrapParagraph(para,maxW,g,tr,sw){
@@ -1723,6 +1724,29 @@ function s3PreviewMaxCssWidth(){
   const w=br&&br.width>48?br.width:0;
   return Math.max(320,Math.min(w||960,window.innerWidth*0.62));
 }
+function syncS3PreviewCopy(){
+  const main=document.getElementById('s3-preview-label-main');
+  const sub=document.getElementById('s3-preview-label-sub');
+  if(!main||!sub)return;
+  if(exportFmt==='typeset'){
+    main.textContent='Live typesetting';
+    sub.textContent='Preview updates from the selected format and the controls on the left';
+  }else if(exportFmt==='grid'){
+    main.textContent='Alphabet';
+    sub.textContent='Preview updates from the selected format and the controls on the left';
+  }else{
+    main.textContent='Single row';
+    sub.textContent='Preview updates from the selected format and the controls on the left';
+  }
+}
+function syncS3TypeControlsVisibility(){
+  const wrap=document.getElementById('s3-type-controls');
+  if(wrap)wrap.hidden=exportFmt!=='typeset';
+  const viewBar=document.getElementById('s3-view-bar');
+  if(viewBar)viewBar.hidden=exportFmt!=='typeset';
+  const s3Right=document.getElementById('s3-right');
+  if(s3Right)s3Right.dataset.exportFmt=exportFmt;
+}
 function renderS3TypeSample(){
   const cvs=document.getElementById('s3-type-canvas');const ta=document.getElementById('s3-type-text');if(!cvs||!ta)return;
   const glyph=+document.getElementById('s3-r-size').value;const track=+document.getElementById('s3-r-track').value;const leadMult=+document.getElementById('s3-r-lead').value/100;
@@ -1733,14 +1757,14 @@ function renderS3TypeSample(){
   let cssW=_s3TypeFrameWidth;
   if(!cssW||cssW<48){const br=frame?.getBoundingClientRect();cssW=br?Math.floor(br.width):0;}
   if(!cssW||cssW<48){const area=document.getElementById('s3-preview-area');cssW=Math.max(240,Math.floor(area?.getBoundingClientRect().width||560));}
-  cssW=Math.max(200,cssW);
+  cssW=Math.max(200,cssW-24);
   const maxW=Math.max(glyph*3+track*2,cssW-32),spaceW=glyph*0.42,lineH=glyph*leadMult,pad=16;
   const paras=text.split(/\n/);const lineStrings=[];
   for(const para of paras){if(!para.trim()){lineStrings.push('');continue;}lineStrings.push(...typeWrapParagraph(para.trim(),maxW,glyph,track,spaceW));}
   if(!lineStrings.length)lineStrings.push('');
   const cssH=Math.ceil(pad*2+lineStrings.length*lineH);
   const dpr=Math.min(2,window.devicePixelRatio||1);
-  cvs.style.width='100%';cvs.style.height=cssH+'px';cvs.width=Math.round(cssW*dpr);cvs.height=Math.round(cssH*dpr);
+  cvs.style.width=cssW+'px';cvs.style.height=cssH+'px';cvs.width=Math.round(cssW*dpr);cvs.height=Math.round(cssH*dpr);
   const ctx=cvs.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
   ctx.fillStyle=fillCol;ctx.fillRect(0,0,cssW,cssH);
 
@@ -1773,30 +1797,18 @@ function renderS3TypeSample(){
   }
 }
 function renderS3(){
-  const cvs=document.getElementById('s3-canvas');
+  const cvs=document.getElementById('s3-type-canvas');
+  const frame=document.getElementById('s3-type-frame');
+  if(!cvs||!frame)return;
+  syncS3PreviewCopy();
+  syncS3TypeControlsVisibility();
   if(exportFmt==='typeset'){
     renderS3TypeSample();
-    const tc=document.getElementById('s3-type-canvas');
-    const maxW=s3PreviewMaxCssWidth();
-    if(!tc||!tc.width||!tc.height){
-      cvs.width=400;cvs.height=120;cvs.style.width='100%';cvs.style.height='auto';
-      const x=cvs.getContext('2d');x.fillStyle=exportBg==='black'?'#141414':'#fff';x.fillRect(0,0,cvs.width,cvs.height);
-      x.fillStyle='#aaa';x.font='11px Helvetica,Arial,sans-serif';x.fillText('Live typeset preview appears here',12,56);
-      return;
-    }
-    const dpr=Math.min(2,window.devicePixelRatio||1);
-    const cssW=tc.width/dpr,cssH=tc.height/dpr;
-    const ds=Math.min(1,maxW/Math.max(cssW,1));
-    cvs.width=tc.width;
-    cvs.height=tc.height;
-    cvs.style.width=Math.round(cssW*ds)+'px';
-    cvs.style.height=Math.round(cssH*ds)+'px';
-    cvs.getContext('2d').drawImage(tc,0,0);
     return;
   }
   const LW=LCARD_PX,LH=LCARD_PX,PAD=LCARD_GAP_PX;const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;
   let W,H;if(exportFmt==='grid'){W=13*LW+14*PAD;H=2*LH+3*PAD;}else{W=26*LW+27*PAD;H=LH+2*PAD;}
-  const maxW=s3PreviewMaxCssWidth();const ds=Math.min(1,maxW/W);
+  const maxW=Math.max(240,s3PreviewMaxCssWidth()-24);const ds=Math.min(1,maxW/W);
   cvs.style.width=Math.round(W*ds)+'px';cvs.style.height=Math.round(H*ds)+'px';cvs.width=W;cvs.height=H;
   const ctx=cvs.getContext('2d');ctx.fillStyle=exportBg==='black'?'#141414':'#fff';ctx.fillRect(0,0,W,H);
   LETTERS.forEach((l,i)=>{
@@ -1804,7 +1816,6 @@ function renderS3(){
     const tmp=document.createElement('canvas');tmp.width=LW;tmp.height=LH;const tc=tmp.getContext('2d');tc.fillStyle=exportBg==='black'?'#141414':'#fff';tc.fillRect(0,0,LW,LH);
     drawLetterGrid(tc,getGrid(l),LW,LH,rules.style,rules.stroke,rules.gap,fg,bg);ctx.drawImage(tmp,ox2,oy2);
   });
-  scheduleS3TypeAfterLayout();
 }
 
 //  OVERRIDE EDITOR
@@ -1941,8 +1952,8 @@ function bindS1Accordions(){
 }
 document.querySelectorAll('#fmt-pills .pill').forEach(p=>p.addEventListener('click',()=>{exportFmt=p.dataset.v;document.querySelectorAll('#fmt-pills .pill').forEach(q=>q.classList.toggle('on',q===p));renderS3();}));
 document.querySelectorAll('#bg-pills .pill').forEach(p=>p.addEventListener('click',()=>{exportBg=p.dataset.v;document.querySelectorAll('#bg-pills .pill').forEach(q=>q.classList.toggle('on',q===p));refreshAZ();renderS3();}));
-document.getElementById('s3-type-text').addEventListener('input',()=>{if(exportFmt==='typeset')renderS3();else scheduleS3Type();});
-['s3-r-size','s3-r-track','s3-r-lead'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{document.getElementById('s3-rv-size').textContent=document.getElementById('s3-r-size').value;document.getElementById('s3-rv-track').textContent=document.getElementById('s3-r-track').value;document.getElementById('s3-rv-lead').textContent=(+document.getElementById('s3-r-lead').value/100).toFixed(2);if(exportFmt==='typeset')renderS3();else scheduleS3Type();});});
+document.getElementById('s3-type-text').addEventListener('input',()=>{renderS3();});
+['s3-r-size','s3-r-track','s3-r-lead'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{document.getElementById('s3-rv-size').textContent=document.getElementById('s3-r-size').value;document.getElementById('s3-rv-track').textContent=document.getElementById('s3-r-track').value;document.getElementById('s3-rv-lead').textContent=(+document.getElementById('s3-r-lead').value/100).toFixed(2);renderS3();});});
 document.getElementById('btn-export').addEventListener('click',()=>{
   if(exportFmt==='typeset'){
     renderS3TypeSample();
@@ -1968,7 +1979,7 @@ document.getElementById('btn-export').addEventListener('click',()=>{
 let _s3ResizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(_s3ResizeTimer);_s3ResizeTimer=setTimeout(()=>{
-    if(currentStep===3){if(exportFmt==='typeset')renderS3();else scheduleS3Type();if(s3CanvasTarget==='poster')p4FitCanvas();}
+    if(currentStep===3){renderS3();if(s3CanvasTarget==='poster')p4FitCanvas();}
   },140);
 });
 
