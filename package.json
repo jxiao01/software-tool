@@ -1,0 +1,8 @@
+{
+  "name": "software-tool",
+  "private": true,
+  "scripts": {
+    "sync:alphabet": "node scripts/sync-alphabet-from-source.mjs",
+    "sync:alphabet:watch": "node scripts/sync-alphabet-from-source.mjs --watch"
+  }
+}
