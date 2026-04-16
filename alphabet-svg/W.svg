@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="472" height="241" viewBox="0 0 472 241" role="img" aria-label="Brick letter W">
+<title>Alphabet W (outline, size-4 bricks)</title>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<g transform="translate(236,120.5)">
+<rect x="-224" y="-103.8" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-224" y1="-103.25" x2="-112" y2="-103.25"/>
+<line x1="-223.45" y1="-103.8" x2="-223.45" y2="-70.2"/>
+<line x1="-112" y1="-103.8" x2="-112" y2="-70.2"/>
+<line x1="-224" y1="-70.2" x2="-112" y2="-70.2"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+<ellipse cx="-210" cy="-108.7" rx="7.84" ry="4.9"/>
+<ellipse cx="-182" cy="-108.7" rx="7.84" ry="4.9"/>
+<ellipse cx="-154" cy="-108.7" rx="7.84" ry="4.9"/>
+<ellipse cx="-126" cy="-108.7" rx="7.84" ry="4.9"/>
+</g>
+<rect x="112" y="-103.8" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="112" y1="-103.25" x2="224" y2="-103.25"/>
+<line x1="112.55" y1="-103.8" x2="112.55" y2="-70.2"/>
+<line x1="224" y1="-103.8" x2="224" y2="-70.2"/>
+<line x1="112" y1="-70.2" x2="224" y2="-70.2"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+<ellipse cx="126" cy="-108.7" rx="7.84" ry="4.9"/>
+<ellipse cx="154" cy="-108.7" rx="7.84" ry="4.9"/>
+<ellipse cx="182" cy="-108.7" rx="7.84" ry="4.9"/>
+<ellipse cx="210" cy="-108.7" rx="7.84" ry="4.9"/>
+</g>
+<rect x="-224" y="-59.8" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-224" y1="-59.25" x2="-112" y2="-59.25"/>
+<line x1="-223.45" y1="-59.8" x2="-223.45" y2="-26.2"/>
+<line x1="-112" y1="-59.8" x2="-112" y2="-26.2"/>
+<line x1="-224" y1="-26.2" x2="-112" y2="-26.2"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="112" y="-59.8" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="112" y1="-59.25" x2="224" y2="-59.25"/>
+<line x1="112.55" y1="-59.8" x2="112.55" y2="-26.2"/>
+<line x1="224" y1="-59.8" x2="224" y2="-26.2"/>
+<line x1="112" y1="-26.2" x2="224" y2="-26.2"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="-224" y="-16.8" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-224" y1="-16.25" x2="-112" y2="-16.25"/>
+<line x1="-223.45" y1="-16.8" x2="-223.45" y2="16.8"/>
+<line x1="-112" y1="-16.8" x2="-112" y2="16.8"/>
+<line x1="-224" y1="16.8" x2="-112" y2="16.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="112" y="-16.8" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="112" y1="-16.25" x2="224" y2="-16.25"/>
+<line x1="112.55" y1="-16.8" x2="112.55" y2="16.8"/>
+<line x1="224" y1="-16.8" x2="224" y2="16.8"/>
+<line x1="112" y1="16.8" x2="224" y2="16.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="-224" y="26.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-224" y1="26.75" x2="-112" y2="26.75"/>
+<line x1="-223.45" y1="26.2" x2="-223.45" y2="59.8"/>
+<line x1="-224" y1="59.8" x2="-112" y2="59.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="-112" y="26.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-112" y1="26.75" x2="0" y2="26.75"/>
+<line x1="-111.45" y1="26.2" x2="-111.45" y2="59.8"/>
+<line x1="-112" y1="59.8" x2="0" y2="59.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+<ellipse cx="-98" cy="21.3" rx="7.84" ry="4.9"/>
+<ellipse cx="-70" cy="21.3" rx="7.84" ry="4.9"/>
+<ellipse cx="-42" cy="21.3" rx="7.84" ry="4.9"/>
+<ellipse cx="-14" cy="21.3" rx="7.84" ry="4.9"/>
+</g>
+<rect x="0" y="26.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="0" y1="26.75" x2="112" y2="26.75"/>
+<line x1="0.55" y1="26.2" x2="0.55" y2="59.8"/>
+<line x1="0" y1="59.8" x2="112" y2="59.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+<ellipse cx="14" cy="21.3" rx="7.84" ry="4.9"/>
+<ellipse cx="42" cy="21.3" rx="7.84" ry="4.9"/>
+<ellipse cx="70" cy="21.3" rx="7.84" ry="4.9"/>
+<ellipse cx="98" cy="21.3" rx="7.84" ry="4.9"/>
+</g>
+<rect x="112" y="26.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="112" y1="26.75" x2="224" y2="26.75"/>
+<line x1="112.55" y1="26.2" x2="112.55" y2="59.8"/>
+<line x1="224" y1="26.2" x2="224" y2="59.8"/>
+<line x1="112" y1="59.8" x2="224" y2="59.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="-224" y="70.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-224" y1="70.75" x2="-112" y2="70.75"/>
+<line x1="-223.45" y1="70.2" x2="-223.45" y2="103.8"/>
+<line x1="-224" y1="103.8" x2="-112" y2="103.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="-112" y="70.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="-112" y1="70.75" x2="0" y2="70.75"/>
+<line x1="-111.45" y1="70.2" x2="-111.45" y2="103.8"/>
+<line x1="-112" y1="103.8" x2="0" y2="103.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="0" y="70.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="0" y1="70.75" x2="112" y2="70.75"/>
+<line x1="0.55" y1="70.2" x2="0.55" y2="103.8"/>
+<line x1="0" y1="103.8" x2="112" y2="103.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+<rect x="112" y="70.2" width="112" height="33.6" rx="1.68" ry="1.68" fill="#ffffff" stroke="none"/>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<line x1="112" y1="70.75" x2="224" y2="70.75"/>
+<line x1="112.55" y1="70.2" x2="112.55" y2="103.8"/>
+<line x1="224" y1="70.2" x2="224" y2="103.8"/>
+<line x1="112" y1="103.8" x2="224" y2="103.8"/>
+</g>
+<g fill="none" stroke="#141414" stroke-width="1.1" stroke-linecap="round">
+</g>
+</g></svg>
