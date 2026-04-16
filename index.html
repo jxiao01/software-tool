@@ -11,7 +11,6 @@
 <div id="topbar">
   <div style="display:flex;align-items:center;">
     <span class="t-title">Rule System</span>
-    <span class="t-sub" id="topbar-sub">Set up your rules</span>
   </div>
   <div id="step-tabs">
     <div class="stab active" id="tab1" data-step="1"><div class="stab-num">1</div><div class="stab-text-wrap"><span class="stab-label">Define Rules</span></div></div>
@@ -60,7 +59,7 @@
       <div class="s1-sec-label">1) Structure</div>
       <div class="srow-wrap">
         <div class="srow">
-          <span class="slabel">Max cells / column</span>
+          <span class="slabel">Max blocks / column</span>
           <div class="srange-stack">
             <div class="srange-bounds" aria-hidden="true"><span>1</span><span>5</span></div>
             <input type="range" id="r-density" min="1" max="5" step="1" value="5" aria-valuemin="1" aria-valuemax="5">
@@ -70,7 +69,7 @@
       </div>
       <div class="srow-wrap">
         <div class="srow">
-          <span class="slabel">Max cells / row</span>
+          <span class="slabel">Max blocks / row</span>
           <div class="srange-stack">
             <div class="srange-bounds" aria-hidden="true"><span>1</span><span>4</span></div>
             <input type="range" id="r-row-density" min="1" max="4" step="1" value="4" aria-valuemin="1" aria-valuemax="4">
@@ -94,7 +93,6 @@
           <span class="s1-acc-chev" aria-hidden="true">▸</span> Grid refinements (optional)
         </button>
         <div id="s1-acc-grid-ref-body" class="s1-acc-body" hidden>
-          <div class="s1-acc-sub">Fine-tune how cells connect after the column cap — defaults work for most people.</div>
           <div class="srow-wrap">
             <div class="srow">
               <span class="slabel">Merge rule</span>
@@ -114,7 +112,6 @@
               </div>
               <span class="sval" id="rv-weight">Off</span>
             </div>
-            <div class="srow-hint">Runs last on every letter (after merge, identity pins, symmetry). Strip skips pins; fill may add cells, then symmetry is re-applied.</div>
           </div>
         </div>
       </div>
@@ -143,7 +140,7 @@
         <div id="s1-col-mask">
           <div class="s1-acc">
             <button type="button" class="s1-acc-head" id="s1-acc-mask-head" aria-expanded="false" aria-controls="s1-acc-mask-body">
-              <span class="s1-acc-chev" aria-hidden="true">▸</span> 4) Custom mask — paint cells
+              <span class="s1-acc-chev" aria-hidden="true">▸</span> 4) Custom mask — paint blocks
             </button>
             <div id="s1-acc-mask-body" class="s1-acc-body" hidden>
               <div class="mask-preview-row">
@@ -182,7 +179,7 @@
       </div>
       <div class="btn-row" style="flex-direction:column;">
         <button class="btn" id="btn-clear-ov">Clear All Overrides</button>
-        <button class="btn" id="btn-back-1" style="margin-top:4px;">← Back to Rules</button>
+        <button class="btn" id="btn-back-1" style="margin-top:4px;">Back to Rules</button>
       </div>
     </div>
 
@@ -190,7 +187,6 @@
     <div id="s3-left" class="step-plate step-plate--above" data-step="3">
       <div id="s3-left-stack" class="s3-left-stack">
       <div class="s3-canvas-target-bar s3-left-canvas-bar">
-        <span class="s3-view-label">Panel</span>
         <div class="pills" id="s3-canvas-target-pills-left">
           <button type="button" class="pill on" data-v="sheet">Output</button>
           <button type="button" class="pill" data-v="poster">Poster</button>
@@ -198,28 +194,28 @@
       </div>
       <div id="s3-left-main-stage" class="s3-left-main-stage">
       <div id="s3-left-sheet-panel" class="s3-left-panel on">
-      <div class="sec" id="s3-export-top">Typesetting</div>
-      <textarea id="s3-type-text" spellcheck="false" placeholder="Try a headline…"></textarea>
-      <div class="sec" style="margin-top:16px;">Typography</div>
-      <div class="srow-wrap"><div class="srow"><span class="slabel">Size</span><input type="range" id="s3-r-size" min="22" max="120" step="2" value="120"><span class="sval" id="s3-rv-size">120</span></div></div>
-      <div class="srow-wrap"><div class="srow"><span class="slabel">Tracking</span><input type="range" id="s3-r-track" min="-6" max="28" step="1" value="2"><span class="sval" id="s3-rv-track">2</span></div></div>
-      <div class="srow-wrap"><div class="srow"><span class="slabel">Leading</span><input type="range" id="s3-r-lead" min="100" max="220" step="5" value="128"><span class="sval" id="s3-rv-lead">1.28</span></div></div>
+      <div class="sec" id="s3-export-top">Preview format</div>
+      <div class="pills" id="fmt-pills"><button class="pill on" data-v="grid">Alphabet</button><button class="pill" data-v="row">Single Row</button><button class="pill" data-v="typeset">Live typeset</button></div>
+      <div id="s3-type-controls">
+        <div class="sec" style="margin-top:16px;">Typesetting</div>
+        <textarea id="s3-type-text" spellcheck="false" placeholder="Try a headline…"></textarea>
+        <div class="sec" style="margin-top:16px;">Typography</div>
+        <div class="srow-wrap"><div class="srow"><span class="slabel">Size</span><input type="range" id="s3-r-size" min="22" max="120" step="2" value="120"><span class="sval" id="s3-rv-size">120</span></div></div>
+        <div class="srow-wrap"><div class="srow"><span class="slabel">Tracking</span><input type="range" id="s3-r-track" min="-6" max="28" step="1" value="2"><span class="sval" id="s3-rv-track">2</span></div></div>
+        <div class="srow-wrap"><div class="srow"><span class="slabel">Leading</span><input type="range" id="s3-r-lead" min="100" max="220" step="5" value="128"><span class="sval" id="s3-rv-lead">1.28</span></div></div>
+      </div>
       <div class="s3-left-divider">
-        <div class="sec" style="margin-top:0;">Export sheet</div>
+        <div class="sec" style="margin-top:0;">Output</div>
         <div class="s3-summary--inline" style="margin-bottom:14px;"><strong id="s3-ov-n">0</strong> overridden · <strong id="s3-rule-n">26</strong> rule-generated</div>
-        <div class="sec">Format</div>
-        <div class="pills" id="fmt-pills"><button class="pill on" data-v="grid">A–Z Grid</button><button class="pill" data-v="row">Single Row</button><button class="pill" data-v="typeset">Live typeset</button></div>
         <div class="sec">Background</div>
         <div class="pills" id="bg-pills"><button class="pill on" data-v="white">White</button><button class="pill" data-v="black">Black</button></div>
       </div>
       <div class="btn-row" style="flex-direction:column;margin-top:20px;">
         <button class="btn primary big" id="btn-export">Download PNG</button>
-        <button class="btn" id="btn-back-2" style="margin-top:6px;">← Back to Overrides</button>
+        <button class="btn" id="btn-back-2" style="margin-top:6px;">Back to Overrides</button>
       </div>
       </div>
       <div id="s3-left-poster-panel" class="s3-left-panel">
-      <div class="sec" style="margin-top:0;">Poster Lab</div>
-
       <div style="padding:8px 0 12px;border-bottom:1px solid #e8e8e8;margin-bottom:4px;">
         <div id="s4-source-wrap">
           <canvas id="s4-source-preview" width="120" height="120" style="flex-shrink:0;border:1px solid #e8e8e8;background:#fff;display:block;"></canvas>
@@ -360,47 +356,29 @@
 
     <!-- STEP 1 RIGHT -->
     <div id="s1-right" class="step-plate step-plate--active" data-step="1">
-      <div id="s1-bar" class="workbar">
-        <span class="az-view-label">Rule Preview — A–Z live</span>
-      </div>
       <div id="s1-scroll" class="work-scroll">
         <div id="s1-az-scroll"><div id="s1-az-grid" class="az-letter-grid"></div></div>
       </div>
       <div class="work-footer">
-        <button class="btn primary big" id="btn-generate">Go to Overrides →</button>
-        <div class="s1-footer-hint">Use Step 2 to paint per-letter overrides</div>
+        <button class="btn primary big" id="btn-generate">Go to Overrides</button>
       </div>
     </div>
 
     <!-- STEP 2 RIGHT -->
     <div id="s2-right" class="step-plate step-plate--above" data-step="2">
-      <div id="az-bar">
-        <div class="az-info"><span id="ov-count2">0</span> overridden / 26</div>
-        <div class="az-hint" id="az-bar-hint">click letter to edit</div>
-      </div>
       <div id="az-scroll"><div id="az-grid" class="az-letter-grid"></div></div>
-      <div style="padding:12px 20px;border-top:1px solid #e8e8e8;flex-shrink:0;display:flex;justify-content:flex-end;">
-        <button class="btn primary" id="btn-go-export">Playground →</button>
+      <div class="work-footer">
+        <button class="btn primary big" id="btn-go-export">Go to Playground</button>
       </div>
     </div>
 
     <!-- STEP 3 RIGHT — Sheet vs Poster canvas switch (full height each) -->
     <div id="s3-right" class="step-plate step-plate--above" data-step="3">
       <div id="s3-right-stack" class="s3-right-stack">
-      <div id="s3-bar" class="workbar">
-        <span class="az-info" id="s3-right-top">Step 3 — Playground · Output</span>
-      </div>
-      <div id="s3-canvas-target-bar" class="s3-canvas-target-bar">
-        <span class="s3-view-label">Canvas</span>
-        <div class="pills" id="s3-canvas-target-pills">
-          <button type="button" class="pill on" data-v="sheet">Output</button>
-          <button type="button" class="pill" data-v="poster">Poster</button>
-        </div>
-      </div>
       <div id="s3-view-bar">
         <span class="s3-view-label">Preview mode</span>
         <div class="pills" id="s3-view-pills">
-          <button type="button" class="pill on" data-v="cells">Cells</button>
+          <button type="button" class="pill on" data-v="cells">Blocks</button>
           <button type="button" class="pill" data-v="point">Point</button>
           <button type="button" class="pill" data-v="line">Line</button>
           <button type="button" class="pill" data-v="plane">Plane</button>
@@ -411,21 +389,12 @@
       <div id="s3-scroll" class="work-scroll">
         <div id="s3-preview-area">
           <div class="s3-block">
-            <div class="s3-block-label">Live typesetting<span>Matches the textarea and sliders on the left</span></div>
             <div class="s3-type-frame" id="s3-type-frame"><canvas id="s3-type-canvas" width="400" height="120"></canvas></div>
-          </div>
-          <div class="s3-block">
-            <div class="s3-block-label">Character set<span>What the sheet Download PNG button exports</span></div>
-            <div class="s3-sheet-frame"><canvas id="s3-canvas"></canvas></div>
           </div>
         </div>
       </div>
       </div>
       <div id="s3-poster-panel" class="s3-canvas-panel">
-      <div id="s4-bar" class="workbar">
-        <span class="az-info">Poster — <span style="color:#bbb;font-weight:400;">cells →</span> Point · Line · Plane</span>
-        <span class="s3-work-hint">controls on the left · Poster PNG / WebM</span>
-      </div>
       <div id="s4-canvas-area">
         <canvas id="s4-poster-canvas"></canvas>
       </div>
@@ -458,8 +427,8 @@
       </div>
       <div id="ov-side">
         <div class="ov-stat">Letter <span id="os-letter">A</span></div>
-        <div class="ov-stat">Your cells <span id="os-yours">0</span></div>
-        <div class="ov-stat">Rule cells <span id="os-rule">0</span></div>
+        <div class="ov-stat">Your blocks <span id="os-yours">0</span></div>
+        <div class="ov-stat">Rule blocks <span id="os-rule">0</span></div>
         <div id="div-label">Divergence</div>
         <div id="div-bar"><div id="div-fill" style="width:0%"></div></div>
         <div class="ov-hint" style="margin-top:12px;">left-click to add<br>right-click to erase<br>drag to paint</div>
