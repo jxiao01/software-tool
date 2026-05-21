@@ -4,7 +4,18 @@ const ROWS=5,COLS=4;
 const LCARD_PX=120;
 /** Matches `.az-letter-grid` gap between cards — used as sheet padding rhythm in Step 3. */
 const LCARD_GAP_PX=10;
-const S3_EXPORT_SCALE=2;
+/** Step 3 sheet PNG export: multiplier on LCARD_PX / gap (2=OK screen, 3–4=sharper print). */
+const S3_EXPORT_SCALE=3;
+/** Live typeset export: min device-pixel ratio for the PNG (cap avoids huge files). */
+const S3_TYPESET_EXPORT_DPR_MIN=3;
+const S3_TYPESET_EXPORT_DPR_MAX=4;
+/** Render each letter tile at this multiple of output pixels, then downscale — softer stud/cell edges (less aliasing). */
+const S3_LETTER_SUPERSAMPLE=2;
+
+function setCanvasImageSmoothingHigh(ctx){
+  ctx.imageSmoothingEnabled=true;
+  if(typeof ctx.imageSmoothingQuality==='string')ctx.imageSmoothingQuality='high';
+}
 
 // ── Alphabet ──
 const ALPHABET = {
@@ -156,7 +167,7 @@ function goStep(n){
   const prev=currentStep;
   if(n===1&&Object.keys(overrides).length&&rulesOverrideSnapshot===null)rulesOverrideSnapshot=cloneRules();
   currentStep=n;
-  if(prev===3&&n!==3)p4StopAnim();
+  if(prev===3&&n!==3){p4StopAnim();syncS3TypesetFrameFocusable();}
   document.querySelectorAll('.stab').forEach(t=>{
     const s=+t.dataset.step;
     t.classList.remove('active','done','locked');
@@ -167,7 +178,10 @@ function goStep(n){
   syncStepPlates(n,prev);
   if(n===1)setStatus('Step 1 — Set your rules, then go to Overrides');
   if(n===2){syncRuleSummary();syncAzViewUI();refreshAZ();setStatus('Step 2 — Click letters to override');}
-  if(n===3){syncExportSummary();renderS3();p4Phase=0;renderS4SourcePreview();setStatus('Step 3 — Playground');setS3CanvasTarget(s3CanvasTarget,{skipSheetRefresh:true,instant:true});}
+  if(n===3){
+    syncExportSummary();renderS3();p4Phase=0;renderS4SourcePreview();setStatus('Step 3 — Playground');setS3CanvasTarget(s3CanvasTarget,{skipSheetRefresh:true,instant:true});
+    if(exportFmt==='typeset')requestAnimationFrame(()=>document.getElementById('s3-type-frame')?.focus({preventScroll:true}));
+  }
   syncTopbarSub(n);
 }
 function syncTopbarSub(n){
@@ -1675,8 +1689,95 @@ function syncRuleSummary(){
 }
 function syncExportSummary(){const n=Object.keys(overrides).length;document.getElementById('s3-ov-n').textContent=n;document.getElementById('s3-rule-n').textContent=26-n;}
 
-// typesetting
+// typesetting (live typeset: no textarea — string + caret, type on #s3-type-frame when focused)
 let _typeTmpCanvas=null,_s3TypeFrameWidth=0,_s3TypeFrameRO=null,_s3TypeRafA=0,_s3TypeRafB=0;
+let s3TypeBuffer='',s3TypeCaret=0;
+function normalizeS3TypeChunk(s){return (s||'').toUpperCase().replace(/[^A-Z\s\n]/g,'');}
+function s3SyncTypesetBuffer(){
+  const t=s3TypesetGetText();
+  s3TypeBuffer=t;
+  s3TypeCaret=Math.min(Math.max(0,s3TypeCaret),s3TypeBuffer.length);
+}
+function s3InsertAtCaret(chunk){
+  const t=normalizeS3TypeChunk(chunk);
+  if(!t)return;
+  s3TypeBuffer=s3TypeBuffer.slice(0,s3TypeCaret)+t+s3TypeBuffer.slice(s3TypeCaret);
+  s3TypeCaret+=t.length;
+  s3SyncTypesetBuffer();
+  renderS3();
+}
+function s3TypesetBackspace(){
+  if(s3TypeCaret<=0)return;
+  s3TypeBuffer=s3TypeBuffer.slice(0,s3TypeCaret-1)+s3TypeBuffer.slice(s3TypeCaret);
+  s3TypeCaret--;
+  s3SyncTypesetBuffer();
+  renderS3();
+}
+function s3TypesetDelete(){
+  if(s3TypeCaret>=s3TypeBuffer.length)return;
+  s3TypeBuffer=s3TypeBuffer.slice(0,s3TypeCaret)+s3TypeBuffer.slice(s3TypeCaret+1);
+  s3SyncTypesetBuffer();
+  renderS3();
+}
+function s3TypesetGetText(){return normalizeS3TypeChunk(s3TypeBuffer);}
+function syncS3TypesetFrameFocusable(){
+  const frame=document.getElementById('s3-type-frame');
+  if(!frame)return;
+  const on=currentStep===3&&exportFmt==='typeset';
+  frame.classList.toggle('s3-type-frame--typeset',on);
+  frame.tabIndex=on?0:-1;
+  if(on){
+    frame.setAttribute('role','textbox');
+    frame.setAttribute('aria-multiline','true');
+    frame.setAttribute('aria-label','Live typeset — move the pointer into the preview and type. A–Z, space, Enter for a new line. Click to move the caret.');
+  }else{
+    frame.removeAttribute('role');
+    frame.removeAttribute('aria-multiline');
+    frame.removeAttribute('aria-label');
+  }
+}
+function s3TypesetKeydown(e){
+  if(currentStep!==3||exportFmt!=='typeset')return;
+  const frame=document.getElementById('s3-type-frame');
+  if(!frame||!frame.contains(e.target))return;
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==='a'||e.key==='A')e.preventDefault();
+    return;
+  }
+  if(e.key==='Backspace'){e.preventDefault();s3TypesetBackspace();return;}
+  if(e.key==='Delete'){e.preventDefault();s3TypesetDelete();return;}
+  if(e.key==='ArrowLeft'){e.preventDefault();s3TypeCaret=Math.max(0,s3TypeCaret-1);syncS3TypesetCaretDiv();return;}
+  if(e.key==='ArrowRight'){e.preventDefault();s3TypeCaret=Math.min(s3TypesetGetText().length,s3TypeCaret+1);syncS3TypesetCaretDiv();return;}
+  if(e.key==='Home'){e.preventDefault();s3TypeCaret=0;syncS3TypesetCaretDiv();return;}
+  if(e.key==='End'){e.preventDefault();s3TypeCaret=s3TypesetGetText().length;syncS3TypesetCaretDiv();return;}
+  if(e.key==='Enter'){e.preventDefault();s3InsertAtCaret('\n');return;}
+  if(e.key===' '||e.code==='Space'){e.preventDefault();s3InsertAtCaret(' ');return;}
+  if(e.key.length===1&&/[a-zA-Z]/.test(e.key)){e.preventDefault();s3InsertAtCaret(e.key);return;}
+}
+function s3TypesetPaste(e){
+  if(currentStep!==3||exportFmt!=='typeset')return;
+  const frame=document.getElementById('s3-type-frame');
+  if(!frame||!frame.contains(e.target))return;
+  e.preventDefault();
+  const txt=e.clipboardData?.getData('text/plain')||'';
+  s3InsertAtCaret(txt);
+}
+function s3TypesetFramePointerDown(e){
+  if(currentStep!==3||exportFmt!=='typeset')return;
+  const frame=document.getElementById('s3-type-frame');
+  if(!frame||!frame.contains(e.target))return;
+  if(e.button!==0)return;
+  frame.focus({preventScroll:true});
+  const xy=s3TypesetCanvasXYFromClient(e);
+  if(!xy||!_s3TypesetLayoutArgs)return;
+  s3TypesetPickCaretFromPoint(xy.mx,xy.my);
+  renderS3();
+}
+function s3TypesetFrameMouseEnter(){
+  if(currentStep!==3||exportFmt!=='typeset')return;
+  const frame=document.getElementById('s3-type-frame');
+  if(frame)frame.focus({preventScroll:true});
+}
 function cancelS3Rafs(){if(_s3TypeRafA)cancelAnimationFrame(_s3TypeRafA);if(_s3TypeRafB)cancelAnimationFrame(_s3TypeRafB);_s3TypeRafA=0;_s3TypeRafB=0;}
 function bindS3TypeFrameResize(){
   const frame=document.getElementById('s3-type-frame');if(!frame||_s3TypeFrameRO)return;
@@ -1694,6 +1795,98 @@ function typeWrapParagraph(para,maxW,g,tr,sw){
   function flush(){if(cur.length){lines.push(cur.join(' '));cur=[];curW=0;}}
   for(const word of words){for(const piece of typeBreakWord(word,maxW,g,tr)){const pw=typeWordWidth(piece,g,tr);if(!cur.length){cur=[piece];curW=pw;continue;}const need=curW+sw+pw;if(need<=maxW){cur.push(piece);curW=need;}else{flush();cur=[piece];curW=pw;}}}
   flush();return lines;
+}
+
+let _s3TypesetCssW=0,_s3TypesetCssH=0,_s3TypesetLayoutArgs=null;
+function typesetLayoutEndForFragment(frag,glyph,track,leadMult,maxW,pad){
+  const spaceW=glyph*0.42,lineH=glyph*leadMult;
+  const paras=frag.split('\n');
+  const lineStrings=[];
+  for(const para of paras){
+    if(!para.trim())lineStrings.push('');
+    else lineStrings.push(...typeWrapParagraph(para.trim(),maxW,glyph,track,spaceW));
+  }
+  if(!lineStrings.length)lineStrings.push('');
+  let y=pad+(lineH-glyph)/2;
+  let last={x:pad,y,h:lineH};
+  for(const line of lineStrings){
+    if(line===''){
+      last={x:pad,y,h:lineH};
+      y+=lineH;
+      continue;
+    }
+    let x=pad;
+    last={x:pad,y,h:lineH};
+    const words2=line.split(/\s+/).filter(Boolean);
+    for(let wi=0;wi<words2.length;wi++){
+      if(wi>0){
+        last={x,y,h:lineH};
+        x+=spaceW;
+        last={x,y,h:lineH};
+      }
+      const word=words2[wi];
+      for(let i=0;i<word.length;i++){
+        last={x,y,h:lineH};
+        x+=glyph+(i<word.length-1?track:0);
+      }
+      last={x,y,h:lineH};
+    }
+    y+=lineH;
+  }
+  return last;
+}
+function typesetPrefixEndXY(text,len,glyph,track,leadMult,maxW,pad){
+  if(len<=0){
+    const lineH=glyph*leadMult;
+    const y=pad+(lineH-glyph)/2;
+    return{x:pad,y,h:lineH};
+  }
+  return typesetLayoutEndForFragment(text.slice(0,len),glyph,track,leadMult,maxW,pad);
+}
+function syncS3TypesetCaretDiv(){
+  const caretEl=document.getElementById('s3-typeset-caret');
+  const frame=document.getElementById('s3-type-frame');
+  const cvs=document.getElementById('s3-type-canvas');
+  if(!caretEl||!frame||!cvs)return;
+  if(exportFmt!=='typeset'||currentStep!==3||!_s3TypesetLayoutArgs){
+    caretEl.style.display='none';
+    return;
+  }
+  const{text,glyph,track,leadMult,maxW,pad}= _s3TypesetLayoutArgs;
+  const n=text.length;
+  const ci=Math.max(0,Math.min(s3TypeCaret,n));
+  const pos=typesetPrefixEndXY(text,ci,glyph,track,leadMult,maxW,pad);
+  const hbar=Math.max(glyph,pos.h||glyph*leadMult);
+  caretEl.style.display=document.activeElement===frame?'block':'none';
+  caretEl.style.left=pos.x+'px';
+  caretEl.style.top=pos.y+'px';
+  caretEl.style.height=hbar+'px';
+  caretEl.style.background=exportBg==='black'?'#ececec':'#111';
+}
+function s3TypesetCanvasXYFromClient(e){
+  const cvs=document.getElementById('s3-type-canvas');
+  if(!cvs)return null;
+  const r=cvs.getBoundingClientRect();
+  const aw=_s3TypesetCssW||cvs.clientWidth;
+  const ah=_s3TypesetCssH||cvs.clientHeight;
+  const mx=(e.clientX-r.left)*(aw/Math.max(1,r.width));
+  const my=(e.clientY-r.top)*(ah/Math.max(1,r.height));
+  return{mx,my};
+}
+function s3TypesetPickCaretFromPoint(mx,my){
+  if(!_s3TypesetLayoutArgs)return;
+  const{text,glyph,track,leadMult,maxW,pad}= _s3TypesetLayoutArgs;
+  const n=text.length;
+  let best=0,bestD=1e18;
+  for(let j=0;j<=n;j++){
+    const p=typesetPrefixEndXY(text,j,glyph,track,leadMult,maxW,pad);
+    const h=Math.max(glyph,p.h||glyph*leadMult);
+    const vx=Math.abs(mx-p.x);
+    const vy=my<p.y?p.y-my:(my>p.y+h?my-(p.y+h):0);
+    const d=vx+vy*2.2;
+    if(d<bestD){bestD=d;best=j;}
+  }
+  s3TypeCaret=best;
 }
 
 function drawGlyphPLP(ctx,letter,gx,gy,glyph,mode,fgHex){
@@ -1746,13 +1939,20 @@ function syncS3TypeControlsVisibility(){
   if(viewBar)viewBar.hidden=exportFmt!=='typeset';
   const s3Right=document.getElementById('s3-right');
   if(s3Right)s3Right.dataset.exportFmt=exportFmt;
+  syncS3TypesetFrameFocusable();
 }
-function renderS3TypeSample(){
-  const cvs=document.getElementById('s3-type-canvas');const ta=document.getElementById('s3-type-text');if(!cvs||!ta)return;
+/**
+ * Renders live typeset to a canvas at logical size cssW×cssH with device-pixel ratio `dpr`.
+ * @param {HTMLCanvasElement} cvs
+ * @param {number} dpr device pixels per CSS pixel (bitmap = css×dpr)
+ * @param {boolean} syncLayout set preview CSS size and caret globals (false for offscreen export-only)
+ */
+function renderS3TypeSampleToCanvas(cvs,dpr,syncLayout){
+  if(!cvs)return;
   const glyph=+document.getElementById('s3-r-size').value;const track=+document.getElementById('s3-r-track').value;const leadMult=+document.getElementById('s3-r-lead').value/100;
   const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;const fillCol=exportBg==='black'?'#141414':'#fff';
   const fgHex=exportBg==='black'?'#ebebeb':'#1a1a1a';
-  const text=ta.value.toUpperCase().replace(/[^A-Z\s\n]/g,'');
+  const text=s3TypesetGetText();
   const frame=document.getElementById('s3-type-frame');
   let cssW=_s3TypeFrameWidth;
   if(!cssW||cssW<48){const br=frame?.getBoundingClientRect();cssW=br?Math.floor(br.width):0;}
@@ -1763,23 +1963,20 @@ function renderS3TypeSample(){
   for(const para of paras){if(!para.trim()){lineStrings.push('');continue;}lineStrings.push(...typeWrapParagraph(para.trim(),maxW,glyph,track,spaceW));}
   if(!lineStrings.length)lineStrings.push('');
   const cssH=Math.ceil(pad*2+lineStrings.length*lineH);
-  const dpr=Math.min(2,window.devicePixelRatio||1);
-  cvs.style.width=cssW+'px';cvs.style.height=cssH+'px';cvs.width=Math.round(cssW*dpr);cvs.height=Math.round(cssH*dpr);
+  if(syncLayout){
+    cvs.style.width=cssW+'px';
+    cvs.style.height=cssH+'px';
+  }
+  cvs.width=Math.round(cssW*dpr);cvs.height=Math.round(cssH*dpr);
   const ctx=cvs.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
+  setCanvasImageSmoothingHigh(ctx);
   ctx.fillStyle=fillCol;ctx.fillRect(0,0,cssW,cssH);
 
   if(s3ViewMode==='cells'){
     if(!_typeTmpCanvas)_typeTmpCanvas=document.createElement('canvas');
-    _typeTmpCanvas.width=Math.max(8,Math.ceil(glyph));_typeTmpCanvas.height=_typeTmpCanvas.width;
+    const cellRes=Math.max(16,Math.ceil(glyph*dpr*S3_LETTER_SUPERSAMPLE));
+    _typeTmpCanvas.width=cellRes;_typeTmpCanvas.height=cellRes;
     const tctx=_typeTmpCanvas.getContext('2d');
-    let y=pad+(lineH-glyph)/2;
-    for(const line of lineStrings){
-      if(line===''){y+=lineH;continue;}let x=pad;
-      const words2=line.split(/\s+/).filter(Boolean);
-      for(let wi=0;wi<words2.length;wi++){const word=words2[wi];for(let i=0;i<word.length;i++){const ch=word[i];tctx.fillStyle=fillCol;tctx.fillRect(0,0,glyph,glyph);drawLetterGrid(tctx,getGrid(ch),glyph,glyph,rules.style,rules.stroke,rules.gap,fg,bg);ctx.drawImage(_typeTmpCanvas,x,y);x+=glyph+(i<word.length-1?track:0);}if(wi<words2.length-1)x+=spaceW;}
-      y+=lineH;
-    }
-  } else {
     let y=pad+(lineH-glyph)/2;
     for(const line of lineStrings){
       if(line===''){y+=lineH;continue;}let x=pad;
@@ -1787,7 +1984,31 @@ function renderS3TypeSample(){
       for(let wi=0;wi<words2.length;wi++){
         const word=words2[wi];
         for(let i=0;i<word.length;i++){
-          drawGlyphPLP(ctx,word[i],x,y,glyph,s3ViewMode,fgHex);
+          const ch=word[i];
+          tctx.fillStyle=fillCol;tctx.fillRect(0,0,cellRes,cellRes);
+          drawLetterGrid(tctx,getGrid(ch),cellRes,cellRes,rules.style,rules.stroke,rules.gap,fg,bg);
+          ctx.drawImage(_typeTmpCanvas,0,0,cellRes,cellRes,x,y,glyph,glyph);
+          x+=glyph+(i<word.length-1?track:0);
+        }
+        if(wi<words2.length-1)x+=spaceW;
+      }
+      y+=lineH;
+    }
+  } else {
+    if(!_typeTmpCanvas)_typeTmpCanvas=document.createElement('canvas');
+    const plpRes=Math.max(8,Math.ceil(glyph*dpr*S3_LETTER_SUPERSAMPLE));
+    _typeTmpCanvas.width=plpRes;_typeTmpCanvas.height=plpRes;
+    const tctx=_typeTmpCanvas.getContext('2d');
+    let y=pad+(lineH-glyph)/2;
+    for(const line of lineStrings){
+      if(line===''){y+=lineH;continue;}let x=pad;
+      const words2=line.split(/\s+/).filter(Boolean);
+      for(let wi=0;wi<words2.length;wi++){
+        const word=words2[wi];
+        for(let i=0;i<word.length;i++){
+          tctx.fillStyle=fillCol;tctx.fillRect(0,0,plpRes,plpRes);
+          drawGlyphPLP(tctx,word[i],0,0,plpRes,s3ViewMode,fgHex);
+          ctx.drawImage(_typeTmpCanvas,0,0,plpRes,plpRes,x,y,glyph,glyph);
           x+=glyph+(i<word.length-1?track:0);
         }
         if(wi<words2.length-1)x+=spaceW;
@@ -1795,6 +2016,21 @@ function renderS3TypeSample(){
       y+=lineH;
     }
   }
+  if(syncLayout){
+    _s3TypesetCssW=cssW;
+    _s3TypesetCssH=cssH;
+    _s3TypesetLayoutArgs={text,glyph,track,leadMult,maxW,pad};
+    syncS3TypesetCaretDiv();
+  }
+}
+function renderS3TypeSample(){
+  const cvs=document.getElementById('s3-type-canvas');
+  const dpr=Math.min(3,window.devicePixelRatio||1);
+  renderS3TypeSampleToCanvas(cvs,dpr,true);
+}
+function s3TypesetExportDpr(){
+  const sys=window.devicePixelRatio||1;
+  return Math.min(S3_TYPESET_EXPORT_DPR_MAX,Math.max(S3_TYPESET_EXPORT_DPR_MIN,Math.round(sys*2)));
 }
 function renderS3(){
   const cvs=document.getElementById('s3-type-canvas');
@@ -1806,15 +2042,24 @@ function renderS3(){
     renderS3TypeSample();
     return;
   }
+  _s3TypesetLayoutArgs=null;
+  const caretEl=document.getElementById('s3-typeset-caret');
+  if(caretEl)caretEl.style.display='none';
   const LW=LCARD_PX,LH=LCARD_PX,PAD=LCARD_GAP_PX;const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;
   let W,H;if(exportFmt==='grid'){W=13*LW+14*PAD;H=2*LH+3*PAD;}else{W=26*LW+27*PAD;H=LH+2*PAD;}
   const maxW=Math.max(240,s3PreviewMaxCssWidth()-24);const ds=Math.min(1,maxW/W);
   cvs.style.width=Math.round(W*ds)+'px';cvs.style.height=Math.round(H*ds)+'px';cvs.width=W;cvs.height=H;
   const ctx=cvs.getContext('2d');ctx.fillStyle=exportBg==='black'?'#141414':'#fff';ctx.fillRect(0,0,W,H);
+  setCanvasImageSmoothingHigh(ctx);
+  if(!_typeTmpCanvas)_typeTmpCanvas=document.createElement('canvas');
+  const tileHi=Math.max(LW,Math.ceil(LW*S3_LETTER_SUPERSAMPLE));
   LETTERS.forEach((l,i)=>{
     let ox2,oy2;if(exportFmt==='grid'){ox2=PAD+(i%13)*(LW+PAD);oy2=PAD+Math.floor(i/13)*(LH+PAD);}else{ox2=PAD+i*(LW+PAD);oy2=PAD;}
-    const tmp=document.createElement('canvas');tmp.width=LW;tmp.height=LH;const tc=tmp.getContext('2d');tc.fillStyle=exportBg==='black'?'#141414':'#fff';tc.fillRect(0,0,LW,LH);
-    drawLetterGrid(tc,getGrid(l),LW,LH,rules.style,rules.stroke,rules.gap,fg,bg);ctx.drawImage(tmp,ox2,oy2);
+    _typeTmpCanvas.width=tileHi;_typeTmpCanvas.height=tileHi;
+    const tc=_typeTmpCanvas.getContext('2d');
+    tc.fillStyle=exportBg==='black'?'#141414':'#fff';tc.fillRect(0,0,tileHi,tileHi);
+    drawLetterGrid(tc,getGrid(l),tileHi,tileHi,rules.style,rules.stroke,rules.gap,fg,bg);
+    ctx.drawImage(_typeTmpCanvas,0,0,tileHi,tileHi,ox2,oy2,LW,LH);
   });
 }
 
@@ -1950,30 +2195,52 @@ function bindS1Accordions(){
   }
   document.querySelectorAll('.s1-acc-head,.s1-mini-toggle').forEach(wire);
 }
-document.querySelectorAll('#fmt-pills .pill').forEach(p=>p.addEventListener('click',()=>{exportFmt=p.dataset.v;document.querySelectorAll('#fmt-pills .pill').forEach(q=>q.classList.toggle('on',q===p));renderS3();}));
+document.querySelectorAll('#fmt-pills .pill').forEach(p=>p.addEventListener('click',()=>{
+  exportFmt=p.dataset.v;
+  document.querySelectorAll('#fmt-pills .pill').forEach(q=>q.classList.toggle('on',q===p));
+  renderS3();
+  if(exportFmt==='typeset'&&currentStep===3)requestAnimationFrame(()=>document.getElementById('s3-type-frame')?.focus({preventScroll:true}));
+}));
 document.querySelectorAll('#bg-pills .pill').forEach(p=>p.addEventListener('click',()=>{exportBg=p.dataset.v;document.querySelectorAll('#bg-pills .pill').forEach(q=>q.classList.toggle('on',q===p));refreshAZ();renderS3();}));
-document.getElementById('s3-type-text').addEventListener('input',()=>{renderS3();});
 ['s3-r-size','s3-r-track','s3-r-lead'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{document.getElementById('s3-rv-size').textContent=document.getElementById('s3-r-size').value;document.getElementById('s3-rv-track').textContent=document.getElementById('s3-r-track').value;document.getElementById('s3-rv-lead').textContent=(+document.getElementById('s3-r-lead').value/100).toFixed(2);renderS3();});});
 document.getElementById('btn-export').addEventListener('click',()=>{
   if(exportFmt==='typeset'){
-    renderS3TypeSample();
-    const tc=document.getElementById('s3-type-canvas');
-    if(!tc||tc.width<2||tc.height<2){
-      setStatus('Nothing to export — add text in Typesetting');
+    if(!s3TypesetGetText().trim()){
+      setStatus('Nothing to export — click the preview and type');
       return;
     }
+    const edpr=s3TypesetExportDpr();
+    const oc=document.createElement('canvas');
+    renderS3TypeSampleToCanvas(oc,edpr,false);
+    if(!oc.width||!oc.height){
+      setStatus('Nothing to export — click the preview and type');
+      return;
+    }
+    renderS3TypeSample();
     const a=document.createElement('a');
     a.download='rule-system-typeset.png';
-    a.href=tc.toDataURL('image/png');
+    a.href=oc.toDataURL('image/png');
     a.click();
-    setStatus('Exported rule-system-typeset.png');
+    setStatus('Exported rule-system-typeset.png @'+edpr+'×');
     return;
   }
   const LW=LCARD_PX*S3_EXPORT_SCALE,LH=LCARD_PX*S3_EXPORT_SCALE,PAD=LCARD_GAP_PX*S3_EXPORT_SCALE;const fg=exportBg==='black'?235:20,bg=exportBg==='black'?20:255;
   let W,H;if(exportFmt==='grid'){W=13*LW+14*PAD;H=2*LH+3*PAD;}else{W=26*LW+27*PAD;H=LH+2*PAD;}
   const oc=document.createElement('canvas');oc.width=W;oc.height=H;const octx=oc.getContext('2d');
   octx.fillStyle=exportBg==='black'?'#141414':'#fff';octx.fillRect(0,0,W,H);
-  LETTERS.forEach((l,i)=>{let ox2,oy2;if(exportFmt==='grid'){ox2=PAD+(i%13)*(LW+PAD);oy2=PAD+Math.floor(i/13)*(LH+PAD);}else{ox2=PAD+i*(LW+PAD);oy2=PAD;}const tmp=document.createElement('canvas');tmp.width=LW;tmp.height=LH;const tc=tmp.getContext('2d');tc.fillStyle=exportBg==='black'?'#141414':'#fff';tc.fillRect(0,0,LW,LH);drawLetterGrid(tc,getGrid(l),LW,LH,rules.style,rules.stroke,rules.gap,fg,bg);octx.drawImage(tmp,ox2,oy2);});
+  setCanvasImageSmoothingHigh(octx);
+  if(!_typeTmpCanvas)_typeTmpCanvas=document.createElement('canvas');
+  const tileHi=Math.max(LW,Math.ceil(LW*S3_LETTER_SUPERSAMPLE));
+  LETTERS.forEach((l,i)=>{
+    let ox2,oy2;
+    if(exportFmt==='grid'){ox2=PAD+(i%13)*(LW+PAD);oy2=PAD+Math.floor(i/13)*(LH+PAD);}
+    else{ox2=PAD+i*(LW+PAD);oy2=PAD;}
+    _typeTmpCanvas.width=tileHi;_typeTmpCanvas.height=tileHi;
+    const tc=_typeTmpCanvas.getContext('2d');
+    tc.fillStyle=exportBg==='black'?'#141414':'#fff';tc.fillRect(0,0,tileHi,tileHi);
+    drawLetterGrid(tc,getGrid(l),tileHi,tileHi,rules.style,rules.stroke,rules.gap,fg,bg);
+    octx.drawImage(_typeTmpCanvas,0,0,tileHi,tileHi,ox2,oy2,LW,LH);
+  });
   const a=document.createElement('a');a.download='rule-system.png';a.href=oc.toDataURL();a.click();setStatus('Exported rule-system.png');
 });
 let _s3ResizeTimer;
@@ -2053,7 +2320,15 @@ function renderS4SourcePreview(){
 
   // Keep single-letter mode aligned with hover math (fixed 4x5 cell mapping).
   if(P.sourceMode==='single'){
-    drawLetterGrid(ctx,getGrid(P.letter),W,H,rules.style,rules.stroke,rules.gap,fg,bg);
+    const iw=Math.max(W,Math.ceil(W*S3_LETTER_SUPERSAMPLE));
+    const ih=Math.max(H,Math.ceil(H*S3_LETTER_SUPERSAMPLE));
+    if(!_typeTmpCanvas)_typeTmpCanvas=document.createElement('canvas');
+    _typeTmpCanvas.width=iw;_typeTmpCanvas.height=ih;
+    const tctx=_typeTmpCanvas.getContext('2d');
+    tctx.fillStyle='#fff';tctx.fillRect(0,0,iw,ih);
+    drawLetterGrid(tctx,getGrid(P.letter),iw,ih,rules.style,rules.stroke,rules.gap,fg,bg);
+    setCanvasImageSmoothingHigh(ctx);
+    ctx.drawImage(_typeTmpCanvas,0,0,iw,ih,0,0,W,H);
     return;
   }
 
@@ -2074,18 +2349,20 @@ function renderS4SourcePreview(){
   let x=Math.max(0,(availW-totalPx)/2);
   const y=Math.max(0,(availH-glyphSize)/2);
 
+  setCanvasImageSmoothingHigh(ctx);
+  if(!_typeTmpCanvas)_typeTmpCanvas=document.createElement('canvas');
   for(let i=0;i<tokens.length;i++){
     const ch=tokens[i];
     if(ch===' ')x+=spacePx;
     else{
-      const gs=Math.max(8,Math.round(glyphSize));
-      const tmp=document.createElement('canvas');
-      tmp.width=gs;tmp.height=gs;
-      const tctx=tmp.getContext('2d');
+      const gOut=Math.max(8,Math.round(glyphSize));
+      const gsHi=Math.max(16,Math.ceil(gOut*S3_LETTER_SUPERSAMPLE));
+      _typeTmpCanvas.width=gsHi;_typeTmpCanvas.height=gsHi;
+      const tctx=_typeTmpCanvas.getContext('2d');
       tctx.fillStyle='#fff';
-      tctx.fillRect(0,0,gs,gs);
-      drawLetterGrid(tctx,getGrid(ch),gs,gs,rules.style,rules.stroke,rules.gap,fg,bg);
-      ctx.drawImage(tmp,Math.round(x),Math.round(y),Math.round(glyphSize),Math.round(glyphSize));
+      tctx.fillRect(0,0,gsHi,gsHi);
+      drawLetterGrid(tctx,getGrid(ch),gsHi,gsHi,rules.style,rules.stroke,rules.gap,fg,bg);
+      ctx.drawImage(_typeTmpCanvas,0,0,gsHi,gsHi,Math.round(x),Math.round(y),gOut,gOut);
       x+=glyphSize;
     }
     if(i<tokens.length-1)x+=gapPx;
@@ -2165,7 +2442,7 @@ function clearPosterHighlight(){
   if(P.motion==='none'){_highlightRaf=requestAnimationFrame(()=>p4Render(0));}
 }
 
-function setStatus(msg){document.getElementById('status-txt').textContent=msg;}
+function setStatus(msg){const el=document.getElementById('status-txt');if(el)el.textContent=msg;}
 
 syncTopbarSub(1);
 bindS1Accordions();
@@ -2176,6 +2453,15 @@ bindS1Accordions();
   sync();
 })();
 bindS3TypeFrameResize();
+(function bindS3TypesetInteraction(){
+  const frame=document.getElementById('s3-type-frame');
+  if(!frame)return;
+  frame.addEventListener('keydown',s3TypesetKeydown);
+  frame.addEventListener('paste',s3TypesetPaste);
+  frame.addEventListener('mousedown',s3TypesetFramePointerDown);
+  frame.addEventListener('mouseenter',s3TypesetFrameMouseEnter);
+  frame.addEventListener('blur',()=>syncS3TypesetCaretDiv());
+})();
 buildMaskGrid();
 buildPreviewSel();
 buildS1AZGrid();
@@ -2185,7 +2471,7 @@ document.querySelectorAll('#medium-pills .pill').forEach(p=>p.classList.toggle('
 syncStudsUi();
 refreshPreview();
 buildS4LetterRow();
-(function(){const t=document.getElementById('s3-type-text');if(t&&!t.value.trim())t.value="WELCOME TO JUSTIN'S WORLD";})();
+(function(){if(!s3TypeBuffer.trim()){s3TypeBuffer="RULES BUILD THE ALPHABET";s3TypeCaret=s3TypeBuffer.length;}})();
 p4SyncUI();
 renderS4SourcePreview();
 setStatus('Step 1 — Set your rules, then go to Overrides');
